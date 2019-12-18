@@ -4,9 +4,47 @@
 #include "pch.h"
 #include <iostream>
 
+#include <GomokuGame.h>
+
+void DrawMatrix(char** matrix, int sideLength)
+{
+	std::cout << "\n";
+	for (int i = 0; i < sideLength; i++)
+	{
+		for (int j = 0; j < sideLength; j++)
+		{
+			char output = 0;
+			switch (matrix[i][j])
+			{
+			case 0:
+				break;
+			case 1:
+				output = '1';
+				break;
+			case 2:
+				output = '2';
+			}
+			std::cout << output << " | ";
+		}
+		std::cout << "\n";
+	}
+}
+
 int main()
 {
-    std::cout << "Hello World!\n"; 
+	GomokuGame game = GomokuGame(5, 3);
+	game.PlayMove(0, 2);
+	game.PlayMove(0, 0);
+	game.PlayMove(0, 3);
+	game.PlayMove(2, 2);
+	game.PlayMove(1, 4);
+	game.PlayMove(4, 0);
+	game.PlayMove(1, 3);
+	game.PlayMove(4, 3);
+	
+	char** matrix = game.GetMatrix();
+	DrawMatrix(matrix, 5);
+	return game.IsMoveWinning(0, 4);
 }
 
 // Run program: Ctrl + F5 or Debug > Start Without Debugging menu
