@@ -1,6 +1,10 @@
 #pragma once
 #include <functional>
 
+#define _EMPTYSYMBOL_ 0
+#define _P1SYMBOL_ 1
+#define _P2SYMBOL_ 2
+
 enum WinnerState_enum
 {
 	None = 0,
@@ -22,12 +26,17 @@ public:
 
 	void ResetBoard();
 	bool IsBoardFull() const;
-	bool IsMoveWinning(int index);
-	bool IsMoveWinning(short row, short col);
+	bool IsMoveWinning(int index) const;
+	bool IsMoveWinning(short row, short col) const;
 
 	bool PlayMove(short row, short col);
+	bool PlayMove(int index);
 
-	char** GetMatrix();
+	char* GetBoard() const;
+	char** GetMatrix() const;
+	bool GetPlayerTurn() const;
+	short GetSideLength() const;
+	int* GetLegalMoves(int& size) const;
 
 	WinnerState_enum GetGameWinState() const;
 private:
@@ -45,7 +54,8 @@ private:
 	short m_sideLength;
 	short m_winAmount;
 	int m_boardLength;
-	char* m_gameBoard;
+	int* m_pLegalMoves;
+	char* m_pGameBoard;
 	int m_movesPlayed;
 
 	WinnerState_enum m_winner;

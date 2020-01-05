@@ -3,11 +3,6 @@
 
 namespace Utils
 {
-	int ConvertToIndex(short row, short col, int sideLength)
-	{
-		return (row * sideLength) + col;
-	}
-
 	void ConvertToRowCol(
 		int index,
 		int sideLength,

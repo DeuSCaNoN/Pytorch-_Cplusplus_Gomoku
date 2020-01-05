@@ -7,25 +7,27 @@
 #include <future>
 #include <iostream>
 
-#define _EMPTYSYMBOL_ 0
-#define _P1SYMBOL_ 1
-#define _P2SYMBOL_ 2
-
 /*--------------------------------------------------------------*/
 
 GomokuGame::GomokuGame(short sideLength, short winAmount)
 	: m_sideLength(sideLength)
 	, m_winAmount(winAmount)
-	, m_boardLength(m_sideLength * m_sideLength)
+	, m_boardLength(sideLength * sideLength)
 	, m_movesPlayed(0)
 	, m_winner(WinnerState_enum::None)
 	, m_playerTurn(true)
 {
-	m_gameBoard = new char[m_boardLength];
+	m_pGameBoard = new char[m_boardLength];
 
 	for (int i = 0; i < m_boardLength; i++)
 	{
-		m_gameBoard[i] = _EMPTYSYMBOL_;
+		m_pGameBoard[i] = _EMPTYSYMBOL_;
+	}
+
+	m_pLegalMoves = new int[m_boardLength];
+	for (int i = 0; i < m_boardLength; i++)
+	{
+		m_pLegalMoves[i] = i;
 	}
 }
 
@@ -37,12 +39,17 @@ GomokuGame::GomokuGame(GomokuGame const& other)
 	m_movesPlayed = other.m_movesPlayed;
 	m_winner = other.m_winner;
 	m_playerTurn = other.m_playerTurn;
-	memcpy(m_gameBoard, other.m_gameBoard, m_boardLength * sizeof(char));
+
+	m_pGameBoard = new char[m_boardLength];
+	m_pLegalMoves = new int[m_boardLength - m_movesPlayed];
+	memcpy(m_pGameBoard, other.m_pGameBoard, m_boardLength * sizeof(char));
+	memcpy(m_pLegalMoves, other.m_pLegalMoves, (m_boardLength - m_movesPlayed) * sizeof(int));
 }
 
 GomokuGame::~GomokuGame()
 {
-	delete m_gameBoard;
+	delete m_pGameBoard;
+	delete m_pLegalMoves;
 }
 
 void GomokuGame::operator=(GomokuGame const& other)
@@ -53,7 +60,13 @@ void GomokuGame::operator=(GomokuGame const& other)
 	m_movesPlayed = other.m_movesPlayed;
 	m_winner = other.m_winner;
 	m_playerTurn = other.m_playerTurn;
-	memcpy(m_gameBoard, other.m_gameBoard, m_boardLength * sizeof(char));
+
+	delete m_pGameBoard;
+	delete m_pLegalMoves;
+	m_pGameBoard = new char[m_boardLength];
+	m_pLegalMoves = new int[m_boardLength - m_movesPlayed];
+	memcpy(m_pGameBoard, other.m_pGameBoard, m_boardLength * sizeof(char));
+	memcpy(m_pLegalMoves, other.m_pLegalMoves, (m_boardLength - m_movesPlayed) * sizeof(int));
 }
 
 /*--------------------------------------------------------------*/
@@ -62,7 +75,7 @@ void GomokuGame::ResetBoard()
 {
 	for (int i = 0; i < m_boardLength; i++)
 	{
-		m_gameBoard[i] = _EMPTYSYMBOL_;
+		m_pGameBoard[i] = _EMPTYSYMBOL_;
 	}
 }
 
@@ -71,17 +84,22 @@ bool GomokuGame::IsBoardFull() const
 	return m_movesPlayed == m_boardLength;
 }
 
-bool GomokuGame::IsMoveWinning(int index)
+bool GomokuGame::IsMoveWinning(int index) const
 {
 	return IsMoveWinning_(index);
 }
 
-bool GomokuGame::IsMoveWinning(short row, short col)
+bool GomokuGame::IsMoveWinning(short row, short col) const
 {
-	return IsMoveWinning_(Utils::ConvertToIndex(row, col, m_sideLength));
+	return IsMoveWinning_(ConvertToIndex(row, col, m_sideLength));
 }
 
-char** GomokuGame::GetMatrix()
+char* GomokuGame::GetBoard() const
+{
+	return m_pGameBoard;
+}
+
+char** GomokuGame::GetMatrix() const
 {
 	char** matrix = new char*[m_sideLength];
 	for (int i = 0; i < m_sideLength; i++)
@@ -94,19 +112,44 @@ char** GomokuGame::GetMatrix()
 		int row = i / m_sideLength;
 		int col = i % m_sideLength;
 
-		matrix[row][col] = m_gameBoard[i];
+		matrix[row][col] = m_pGameBoard[i];
 	}
 
 	return matrix;
 }
 
-bool GomokuGame::PlayMove(short row, short col)
+bool GomokuGame::GetPlayerTurn() const
 {
-	int index = Utils::ConvertToIndex(row, col, m_sideLength);
-	if (m_gameBoard[index] != _EMPTYSYMBOL_)
+	return m_playerTurn;
+}
+
+short GomokuGame::GetSideLength() const
+{
+	return m_sideLength;
+}
+
+int* GomokuGame::GetLegalMoves(int& size) const
+{
+	size = m_boardLength - m_movesPlayed;
+	return m_pLegalMoves;
+}
+
+bool GomokuGame::PlayMove(int index)
+{
+	if (m_pGameBoard[index] != _EMPTYSYMBOL_)
 		return false;
 
-	m_gameBoard[index] = m_playerTurn ? _P1SYMBOL_ : _P2SYMBOL_;
+	m_pGameBoard[index] = m_playerTurn ? _P1SYMBOL_ : _P2SYMBOL_;
+	int legalMovesSize = m_boardLength - m_movesPlayed;
+	bool bTakenOut = false;
+	for (int i = 0; i < legalMovesSize; i++)
+	{
+		if (m_pLegalMoves[i] != index && bTakenOut)
+			m_pLegalMoves[i - 1] = m_pLegalMoves[i];
+		else if (m_pLegalMoves[i] == index)
+			bTakenOut = true;
+	}
+
 	m_movesPlayed++;
 
 	if (IsMoveWinning_(index))
@@ -118,6 +161,11 @@ bool GomokuGame::PlayMove(short row, short col)
 	return true;
 }
 
+bool GomokuGame::PlayMove(short row, short col)
+{
+	return PlayMove(ConvertToIndex(row, col, m_sideLength));
+}
+
 WinnerState_enum GomokuGame::GetGameWinState() const
 {
 	return m_winner;
@@ -127,7 +175,7 @@ WinnerState_enum GomokuGame::GetGameWinState() const
 
 void GomokuGame::FreeCurrentBoard_()
 {
-	delete m_gameBoard;
+	delete m_pGameBoard;
 }
 
 int GomokuGame::DirectionAmount_(
@@ -138,9 +186,9 @@ int GomokuGame::DirectionAmount_(
 {
 	int aboveAmount = 0;
 	int testIndex = indexModifier(index);
-	while (indexCheck)
+	while (indexCheck(testIndex))
 	{
-		if (m_gameBoard[testIndex] == symbol)
+		if (m_pGameBoard[testIndex] == symbol)
 		{
 			aboveAmount++;
 			testIndex = indexModifier(testIndex);
@@ -157,7 +205,7 @@ int GomokuGame::DirectionAmount_(
 
 bool GomokuGame::IsMoveWinning_(int index) const
 {
-	char symbol = m_gameBoard[index];
+	char symbol = m_pGameBoard[index];
 	if (symbol == _EMPTYSYMBOL_)
 		return false;
 

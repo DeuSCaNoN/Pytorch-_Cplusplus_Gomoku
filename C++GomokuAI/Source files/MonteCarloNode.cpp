@@ -5,74 +5,87 @@
 namespace MonteCarlo
 {
 
-	MonteCarloNode::MonteCarloNode(MonteCarloNode* parent, float prob, int gameSpace)
+	MonteCarloNode::MonteCarloNode(MonteCarloNode* parent, double prob, int gameSpace)
 		: m_visits(0)
 		, m_probability(prob)
 		, m_qValue(0.0f)
-		, m_childrenSize(gameSpace)
-		, m_parent(parent)
+		, m_gameSpace(gameSpace)
+		, m_childrenSize(0)
+		, m_pParent(parent)
 	{
-		m_children = new MonteCarloNode*[m_childrenSize];
-		for (int i = 0; i < m_childrenSize; i++)
+		m_ppChildren = new MonteCarloNode*[m_gameSpace];
+		for (int i = 0; i < m_gameSpace; i++)
 		{
-			m_children[i] = nullptr;
+			m_ppChildren[i] = nullptr;
 		}
 	}
 
 	MonteCarloNode::MonteCarloNode(MonteCarloNode const& other)
 	{
-		m_parent = other.m_parent;
-		m_children = other.m_children;
+		m_pParent = other.m_pParent;
+		m_ppChildren = other.m_ppChildren;
 		m_childrenSize = other.m_childrenSize;
+		m_gameSpace = other.m_gameSpace;
 		m_visits = other.m_visits;
 		m_probability = other.m_probability;
 		m_qValue = other.m_qValue;
 	}
 
 	MonteCarloNode::~MonteCarloNode()
-	{
-		delete m_parent;
-		m_parent = nullptr;
+	{}
 
-		for (int i = 0; i < m_childrenSize; i++)
+	void MonteCarloNode::DeleteChildrenExcept(unsigned int exception)
+	{
+		for (int i = 0; i < m_gameSpace; i++)
 		{
-			delete m_children[i];
+			if (i != exception)
+				delete m_ppChildren[i];
 		}
-		delete m_children;
-		m_children = nullptr;
+		delete m_ppChildren;
+		m_ppChildren = nullptr;
+		m_childrenSize = 0;
 	}
 
 	/*--------------------------------------------------------------*/
 
-	void MonteCarloNode::ExpandChildren(int* actions, float* probs, int size)
+	void MonteCarloNode::ExpandChildren(int* actions, double* probs, int size)
 	{
 		for (int i = 0; i < size; i++)
 		{
 			int index = actions[i];
-			float probability = probs[i];
-
-			if (m_children[index] == nullptr)
+			double probability = probs[i];
+			if (!m_ppChildren[index])
 			{
-				m_children[index] = new MonteCarloNode(this, probability, m_childrenSize);
+				m_ppChildren[index] = new MonteCarloNode(this, probability, m_gameSpace);
+				m_childrenSize++;
 			}
 		}
 	}
 
-	double MonteCarloNode::GetValue(short c_puct)
+	double MonteCarloNode::GetValue(short c_puct, bool bPlayerToSearch)
 	{
-		return m_qValue + ((c_puct * m_probability * sqrt(m_parent->GetVisits())) / (m_visits + 1));
+		double value = (c_puct * m_probability * sqrt(log(m_pParent->GetVisits()) / (m_visits + 1)));
+		if (!bPlayerToSearch)
+			value = -value;
+		return (m_qValue / (m_visits + 1)) + value;
 	}
 
-	void MonteCarloNode::Update(float leafValue)
+	MonteCarloNode** MonteCarloNode::GetChildren()
+	{
+		return m_ppChildren;
+	}
+
+	void MonteCarloNode::Update(double leafValue)
 	{
 		m_visits++;
-		m_qValue += (leafValue - m_qValue) / m_visits;
+
+		m_qValue += leafValue;
 	}
 
-	void MonteCarloNode::RecursiveUpdate(float leafValue)
+	void MonteCarloNode::RecursiveUpdate(double leafValue)
 	{
-		if (m_parent != nullptr)
-			m_parent->Update(-leafValue);
+		if (m_pParent != nullptr)
+			m_pParent->RecursiveUpdate(leafValue);
 
 		Update(leafValue);
 	}
@@ -80,6 +93,45 @@ namespace MonteCarlo
 	int MonteCarloNode::GetVisits() const
 	{
 		return m_visits;
+	}
+
+	int MonteCarloNode::Select(bool playerToCheck, short c_puct)
+	{
+		int index = -1;
+		double maxValue = playerToCheck ? -500.0 : 500.0;
+		for (int i = 0; i < m_gameSpace; i++)
+		{
+			if (m_ppChildren[i] == nullptr)
+				continue;
+
+			if (index == -1)
+				index = i;
+			
+			double value = m_ppChildren[i]->GetValue(c_puct, playerToCheck);
+			if (playerToCheck)
+			{
+				if (value > maxValue)
+				{
+					maxValue = value;
+					index = i;
+				}
+			}
+			else
+			{
+				if (value < maxValue)
+				{
+					maxValue = value;
+					index = i;
+				}
+			}
+		}
+
+		return index;
+	}
+
+	int MonteCarloNode::GetChildrenCount() const
+	{
+		return m_childrenSize;
 	}
 
 }

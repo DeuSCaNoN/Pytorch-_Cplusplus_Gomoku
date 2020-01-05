@@ -1,7 +1,8 @@
 #pragma once
 
+#define ConvertToIndex(row, col, sideLength) (row * sideLength) + col
+
 namespace Utils
 {
-	int ConvertToIndex(short row, short col, int sideLength);
 	void ConvertToRowCol(int index, int sideLength, short& row, short& col);
 }
