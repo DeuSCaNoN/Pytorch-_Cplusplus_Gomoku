@@ -91,11 +91,12 @@
       <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>J:\AITicTacToe\C++GomokuAI\C++GomokuAI\Header files;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\Oscar\AppData\Local\Programs\Python\Python36\include;J:\AITicTacToe\C++GomokuAI\C++GomokuAI\Header files;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalLibraryDirectories>C:\Users\Oscar\AppData\Local\Programs\Python\Python36\libs</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -107,11 +108,12 @@
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>J:\AITicTacToe\C++GomokuAI\C++GomokuAI\Header files;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\Oscar\AppData\Local\Programs\Python\Python36\include;J:\AITicTacToe\C++GomokuAI\C++GomokuAI\Header files;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalLibraryDirectories>C:\Users\Oscar\AppData\Local\Programs\Python\Python36\libs</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -125,13 +127,14 @@
       <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>J:\AITicTacToe\C++GomokuAI\C++GomokuAI\Header files;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\Oscar\AppData\Local\Programs\Python\Python36\include;J:\AITicTacToe\C++GomokuAI\C++GomokuAI\Header files;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalLibraryDirectories>C:\Users\Oscar\AppData\Local\Programs\Python\Python36\libs</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -145,21 +148,44 @@
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>J:\AITicTacToe\C++GomokuAI\C++GomokuAI\Header files;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\Oscar\AppData\Local\Programs\Python\Python36\include;J:\AITicTacToe\C++GomokuAI\C++GomokuAI\Header files;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalLibraryDirectories>C:\Users\Oscar\AppData\Local\Programs\Python\Python36\libs</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="Header files\ai\ai_controller.h" />
+    <ClInclude Include="Header files\ai\eval.h" />
+    <ClInclude Include="Header files\ai\negamax.h" />
+    <ClInclude Include="Header files\ai\utils.h" />
+    <ClInclude Include="Header files\api\renju_api.h" />
+    <ClInclude Include="Header files\GomokuPolicyAgent.h" />
     <ClInclude Include="Header files\MonteCarloNode.h" />
+    <ClInclude Include="Header files\MonteCarloTreeSearch.h" />
+    <ClInclude Include="Header files\protocols\cli.h" />
+    <ClInclude Include="Header files\protocols\gomocup.h" />
+    <ClInclude Include="Header files\utils\globals.h" />
+    <ClInclude Include="Header files\utils\json.h" />
     <ClInclude Include="pch.h" />
+    <ClCompile Include="Source files\blupig-api\ai\ai_controller.cc" />
+    <ClCompile Include="Source files\blupig-api\ai\eval.cc" />
+    <ClCompile Include="Source files\blupig-api\ai\negamax.cc" />
+    <ClCompile Include="Source files\blupig-api\ai\utils.cc" />
+    <ClCompile Include="Source files\blupig-api\api\renju_api.cc" />
+    <ClCompile Include="Source files\blupig-api\main\main.cc" />
+    <ClCompile Include="Source files\blupig-api\protocols\cli.cc" />
+    <ClCompile Include="Source files\blupig-api\protocols\gomocup.cc" />
+    <ClCompile Include="Source files\blupig-api\utils\globals.cc" />
     <ClCompile Include="Source files\GomokuGame.cpp" />
+    <ClCompile Include="Source files\GomokuPolicyAgent.cpp" />
     <ClCompile Include="Source files\MonteCarloNode.cpp" />
-    <ClCompile Include="Source files\Utils.cpp" />
+    <ClCompile Include="Source files\MonteCarloTreeSearch.cpp" />
+    <ClCompile Include="Source files\GomokuUtils.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="C++GomokuAI.cpp" />
@@ -170,7 +196,7 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
     </ClCompile>
     <ClInclude Include="Header files\GomokuGame.h" />
-    <ClInclude Include="Header files\Utils.h" />
+    <ClInclude Include="Header files\GomokuUtils.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

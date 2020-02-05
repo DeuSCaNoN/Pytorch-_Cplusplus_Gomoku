@@ -2,7 +2,9 @@
 
 #define ConvertToIndex(row, col, sideLength) (row * sideLength) + col
 
-namespace Utils
+namespace GomokuUtils
 {
 	void ConvertToRowCol(int index, int sideLength, short& row, short& col);
+
+	void GenerateDataSet(short boardSide);
 }

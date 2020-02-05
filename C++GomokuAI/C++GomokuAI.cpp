@@ -2,9 +2,12 @@
 //
 
 #include "pch.h"
-#include <iostream>
+#include "GomokuGame.h"
+#include "MonteCarloTreeSearch.h"
+#include "GomokuPolicyAgent.h"
+#include "GomokuUtils.h"
 
-#include <GomokuGame.h>
+#include <iostream>
 
 void DrawMatrix(char** matrix, int sideLength)
 {
@@ -32,19 +35,21 @@ void DrawMatrix(char** matrix, int sideLength)
 
 int main()
 {
-	GomokuGame game = GomokuGame(5, 3);
-	game.PlayMove(0, 2);
-	game.PlayMove(0, 0);
-	game.PlayMove(0, 3);
-	game.PlayMove(2, 2);
-	game.PlayMove(1, 4);
-	game.PlayMove(4, 0);
-	game.PlayMove(1, 3);
-	game.PlayMove(4, 3);
+	short boardSize = 15;
+	short win = 5;
+
+	GomokuGame game = GomokuGame(boardSize, win);
+	game.PlayMove(7,7);
+	GomokuPolicyAgent agent;
+	agent.StartTraining(false);
+	agent.PredictMove(game.GetBoard(), 225, ConvertToIndex(7,7,15), false);
 	
-	char** matrix = game.GetMatrix();
-	DrawMatrix(matrix, 5);
-	return game.IsMoveWinning(0, 4);
+	MonteCarlo::MonteCarloTreeSearch treeSearch(boardSize*boardSize, 400);
+	int index = treeSearch.GetMove(game);
+	game.PlayMove(index);
+	DrawMatrix(game.GetMatrix(), boardSize);
+
+	return game.IsMoveWinning(2, 2);
 }
 
 // Run program: Ctrl + F5 or Debug > Start Without Debugging menu

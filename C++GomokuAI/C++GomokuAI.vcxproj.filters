@@ -13,6 +13,12 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
+    <Filter Include="Source Files\blupig-api">
+      <UniqueIdentifier>{6a816c98-9ffc-407a-b56b-f144553fdab9}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\blupig-api">
+      <UniqueIdentifier>{496f53f5-b9ff-4447-9aa9-27f93bb23490}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="C++GomokuAI.cpp">
@@ -24,10 +30,43 @@
     <ClCompile Include="pch.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Source files\Utils.cpp">
+    <ClCompile Include="Source files\MonteCarloNode.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Source files\MonteCarloNode.cpp">
+    <ClCompile Include="Source files\MonteCarloTreeSearch.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Source files\GomokuPolicyAgent.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Source files\blupig-api\main\main.cc">
+      <Filter>Source Files\blupig-api</Filter>
+    </ClCompile>
+    <ClCompile Include="Source files\blupig-api\protocols\cli.cc">
+      <Filter>Source Files\blupig-api</Filter>
+    </ClCompile>
+    <ClCompile Include="Source files\blupig-api\protocols\gomocup.cc">
+      <Filter>Source Files\blupig-api</Filter>
+    </ClCompile>
+    <ClCompile Include="Source files\blupig-api\utils\globals.cc">
+      <Filter>Source Files\blupig-api</Filter>
+    </ClCompile>
+    <ClCompile Include="Source files\blupig-api\ai\ai_controller.cc">
+      <Filter>Source Files\blupig-api</Filter>
+    </ClCompile>
+    <ClCompile Include="Source files\blupig-api\ai\eval.cc">
+      <Filter>Source Files\blupig-api</Filter>
+    </ClCompile>
+    <ClCompile Include="Source files\blupig-api\ai\negamax.cc">
+      <Filter>Source Files\blupig-api</Filter>
+    </ClCompile>
+    <ClCompile Include="Source files\blupig-api\ai\utils.cc">
+      <Filter>Source Files\blupig-api</Filter>
+    </ClCompile>
+    <ClCompile Include="Source files\blupig-api\api\renju_api.cc">
+      <Filter>Source Files\blupig-api</Filter>
+    </ClCompile>
+    <ClCompile Include="Source files\GomokuUtils.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -38,10 +77,43 @@
     <ClInclude Include="pch.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Header files\Utils.h">
+    <ClInclude Include="Header files\MonteCarloNode.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Header files\MonteCarloNode.h">
+    <ClInclude Include="Header files\MonteCarloTreeSearch.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Header files\GomokuPolicyAgent.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Header files\protocols\cli.h">
+      <Filter>Header Files\blupig-api</Filter>
+    </ClInclude>
+    <ClInclude Include="Header files\protocols\gomocup.h">
+      <Filter>Header Files\blupig-api</Filter>
+    </ClInclude>
+    <ClInclude Include="Header files\utils\globals.h">
+      <Filter>Header Files\blupig-api</Filter>
+    </ClInclude>
+    <ClInclude Include="Header files\utils\json.h">
+      <Filter>Header Files\blupig-api</Filter>
+    </ClInclude>
+    <ClInclude Include="Header files\ai\ai_controller.h">
+      <Filter>Header Files\blupig-api</Filter>
+    </ClInclude>
+    <ClInclude Include="Header files\ai\eval.h">
+      <Filter>Header Files\blupig-api</Filter>
+    </ClInclude>
+    <ClInclude Include="Header files\ai\negamax.h">
+      <Filter>Header Files\blupig-api</Filter>
+    </ClInclude>
+    <ClInclude Include="Header files\ai\utils.h">
+      <Filter>Header Files\blupig-api</Filter>
+    </ClInclude>
+    <ClInclude Include="Header files\api\renju_api.h">
+      <Filter>Header Files\blupig-api</Filter>
+    </ClInclude>
+    <ClInclude Include="Header files\GomokuUtils.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

@@ -1,6 +1,6 @@
 #include "pch.h"
 #include "GomokuGame.h"
-#include "Utils.h"
+#include "GomokuUtils.h"
 
 #include <string.h>
 #include <thread>
@@ -18,15 +18,11 @@ GomokuGame::GomokuGame(short sideLength, short winAmount)
 	, m_playerTurn(true)
 {
 	m_pGameBoard = new char[m_boardLength];
+	m_pLegalMoves = new int[m_boardLength];
 
 	for (int i = 0; i < m_boardLength; i++)
 	{
 		m_pGameBoard[i] = _EMPTYSYMBOL_;
-	}
-
-	m_pLegalMoves = new int[m_boardLength];
-	for (int i = 0; i < m_boardLength; i++)
-	{
 		m_pLegalMoves[i] = i;
 	}
 }
@@ -76,7 +72,10 @@ void GomokuGame::ResetBoard()
 	for (int i = 0; i < m_boardLength; i++)
 	{
 		m_pGameBoard[i] = _EMPTYSYMBOL_;
+		m_pLegalMoves[i] = i;
 	}
+
+	m_playerTurn = true;
 }
 
 bool GomokuGame::IsBoardFull() const
