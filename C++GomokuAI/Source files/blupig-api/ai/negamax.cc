@@ -46,7 +46,7 @@ int RenjuAINegamax::presetSearchBreadth[5] = {17, 7, 5, 3, 3};
 #define kScoreDecayFactor 0.95f
 
 void RenjuAINegamax::heuristicNegamax(const char *gs, int player, int depth, int time_limit, bool enable_ab_pruning,
-                                      int *actual_depth, int *move_r, int *move_c) {
+                                      int *actual_depth, int *move_r, int *move_c, char* pValueBoard) {
     // Check arguments
     if (gs == nullptr ||
         player < 1 || player > 2 ||
@@ -68,7 +68,7 @@ void RenjuAINegamax::heuristicNegamax(const char *gs, int player, int depth, int
     if (depth > 0) {
         if (actual_depth != nullptr) *actual_depth = depth;
         heuristicNegamax(_gs, player, depth, depth, enable_ab_pruning,
-                         INT_MIN / 2, INT_MAX / 2, move_r, move_c);
+                         INT_MIN / 2, INT_MAX / 2, move_r, move_c, pValueBoard);
     } else {
         // Iterative deepening
         std::clock_t c_start = std::clock();
@@ -80,7 +80,7 @@ void RenjuAINegamax::heuristicNegamax(const char *gs, int player, int depth, int
 
             // Execute negamax
             heuristicNegamax(_gs, player, d, d, enable_ab_pruning,
-                             INT_MIN / 2, INT_MAX / 2, move_r, move_c);
+                             INT_MIN / 2, INT_MAX / 2, move_r, move_c, pValueBoard);
 
             // Times
             std::clock_t c_iteration = (std::clock() - c_iteration_start) * 1000 / CLOCKS_PER_SEC;
@@ -98,7 +98,7 @@ void RenjuAINegamax::heuristicNegamax(const char *gs, int player, int depth, int
 
 int RenjuAINegamax::heuristicNegamax(char *gs, int player, int initial_depth, int depth,
                                      bool enable_ab_pruning, int alpha, int beta,
-                                     int *move_r, int *move_c) {
+                                     int *move_r, int *move_c, char* pValueBoard) {
     // Count node
     ++g_node_count;
 
@@ -173,7 +173,8 @@ int RenjuAINegamax::heuristicNegamax(char *gs, int player, int initial_depth, in
                                                 -beta,              //
                                                 -alpha + move.heuristic_val,
                                                 nullptr,            // Result move not required
-                                                nullptr);
+                                                nullptr,
+												nullptr);
 
         // Closer moves get more score
         if (score >= 2) score = static_cast<int>(score * kScoreDecayFactor);
@@ -202,6 +203,12 @@ int RenjuAINegamax::heuristicNegamax(char *gs, int player, int initial_depth, in
         int max_score_decayed = max_score;
         if (max_score >= 2) max_score_decayed = static_cast<int>(max_score_decayed * kScoreDecayFactor);
         if (max_score > alpha) alpha = max_score;
+
+		if (pValueBoard)
+		{
+			pValueBoard[move.r * g_board_size + move.c] = move.actual_score;
+		}
+
         if (enable_ab_pruning && max_score_decayed >= beta) break;
     }
 

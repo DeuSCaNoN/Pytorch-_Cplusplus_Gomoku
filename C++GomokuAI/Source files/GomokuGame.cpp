@@ -75,6 +75,8 @@ void GomokuGame::ResetBoard()
 		m_pLegalMoves[i] = i;
 	}
 
+	m_winner = WinnerState_enum::None;
+	m_movesPlayed = 0;
 	m_playerTurn = true;
 }
 

@@ -24,8 +24,8 @@
 
 class RenjuAIEval {
  public:
-    RenjuAIEval();
-    ~RenjuAIEval();
+	 RenjuAIEval() {};
+	 ~RenjuAIEval() {};
 
     // Evaluate the entire game state as a player
     static int evalState(const char *gs, int player);

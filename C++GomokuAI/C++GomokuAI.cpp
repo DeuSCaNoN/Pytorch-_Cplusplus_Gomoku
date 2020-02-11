@@ -38,7 +38,9 @@ int main()
 	short boardSize = 15;
 	short win = 5;
 
-	GomokuGame game = GomokuGame(boardSize, win);
+	GomokuUtils::GenerateValueSet(boardSize);
+
+/*	GomokuGame game = GomokuGame(boardSize, win);
 	game.PlayMove(7,7);
 	GomokuPolicyAgent agent;
 	agent.StartTraining(false);
@@ -50,6 +52,7 @@ int main()
 	DrawMatrix(game.GetMatrix(), boardSize);
 
 	return game.IsMoveWinning(2, 2);
+*/
 }
 
 // Run program: Ctrl + F5 or Debug > Start Without Debugging menu

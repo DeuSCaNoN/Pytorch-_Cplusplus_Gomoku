@@ -27,7 +27,7 @@ class RenjuAINegamax {
     ~RenjuAINegamax();
 
     static void heuristicNegamax(const char *gs, int player, int depth, int time_limit, bool enable_ab_pruning,
-                                 int *actual_depth, int *move_r, int *move_c);
+                                 int *actual_depth, int *move_r, int *move_c, char* pValueBoard);
 
  private:
     // Preset search breadth
@@ -50,7 +50,7 @@ class RenjuAINegamax {
 
     static int heuristicNegamax(char *gs, int player, int initial_depth, int depth,
                                 bool enable_ab_pruning, int alpha, int beta,
-                                int *move_r, int *move_c);
+                                int *move_r, int *move_c, char* pValueBoard);
 
     // Search possible moves based on a given state, sorted by heuristic values.
     static void searchMovesOrdered(const char *gs, int player, std::vector<Move> *result);

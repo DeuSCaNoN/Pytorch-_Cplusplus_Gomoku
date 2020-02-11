@@ -26,7 +26,7 @@
 
 void RenjuAIController::generateMove(const char *gs, int player, int search_depth, int time_limit,
                            int *actual_depth, int *move_r, int *move_c, int *winning_player,
-                           unsigned int *node_count, unsigned int *eval_count, unsigned int *pm_count) {
+                           unsigned int *node_count, unsigned int *eval_count, unsigned int *pm_count, char* pValueBoard) {
     // Check arguments
     if (gs == nullptr ||
         player  < 1 || player > 2 ||
@@ -56,7 +56,7 @@ void RenjuAIController::generateMove(const char *gs, int player, int search_dept
     std::memcpy(_gs, gs, g_gs_size);
 
     // Run negamax
-    RenjuAINegamax::heuristicNegamax(_gs, player, search_depth, time_limit, true, actual_depth, move_r, move_c);
+    RenjuAINegamax::heuristicNegamax(_gs, player, search_depth, time_limit, true, actual_depth, move_r, move_c, pValueBoard);
 
     // Execute the move
     std::memcpy(_gs, gs, g_gs_size);

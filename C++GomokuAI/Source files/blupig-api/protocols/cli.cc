@@ -117,7 +117,7 @@ std::string RenjuProtocolCLI::generateMove(const char *gs_string, int ai_player_
     int move_r, move_c, winning_player, actual_depth;
     unsigned int node_count, eval_count, pm_count;
     bool success = RenjuAPI::generateMove(gs_string, ai_player_id, search_depth, time_limit, num_threads, &actual_depth,
-                                          &move_r, &move_c, &winning_player, &node_count, &eval_count, &pm_count);
+                                          &move_r, &move_c, &winning_player, &node_count, &eval_count, &pm_count, nullptr);
 
     if (!success) return generateResultJson(nullptr, "Invalid input data.");
 
