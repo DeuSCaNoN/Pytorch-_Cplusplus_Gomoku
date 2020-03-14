@@ -19,6 +19,10 @@ namespace MonteCarlo
 		double AsyncRollout_(GomokuGame* pGame, int index);
 		double EvaluateRollout_(GomokuGame& game);
 
+		void ExpandChildrenBluPig_(MonteCarloNode* pNode, GomokuGame* pGame);
+
+		std::function<void(MonteCarloNode*, GomokuGame*)> m_expandChildrenFn;
+
 		MonteCarloNode* m_pRoot;
 		int m_playouts;
 		int m_gameSpace;

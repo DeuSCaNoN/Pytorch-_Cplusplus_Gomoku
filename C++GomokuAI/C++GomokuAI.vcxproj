@@ -75,12 +75,14 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
+    <IncludePath>J:\AITicTacToe\libtorchDebug\include;J:\AITicTacToe\libtorchDebug\include\torch\csrc\api\include;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
+    <IncludePath>J:\AITicTacToe\libtorch\include;J:\AITicTacToe\libtorch\include\torch\csrc\api\include;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -106,15 +108,19 @@
       <Optimization>Disabled</Optimization>
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <ConformanceMode>true</ConformanceMode>
+      <ConformanceMode>false</ConformanceMode>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>C:\Users\Oscar\AppData\Local\Programs\Python\Python36\include;J:\AITicTacToe\C++GomokuAI\C++GomokuAI\Header files;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\Oscar\AppData\Local\Programs\Python\Python36\include;J:\AITicTacToe\C++GomokuAI\C++GomokuAI\Header files;J:\AITicTacToe\libtorchDebug\include;J:\AITicTacToe\libtorchDebug\include\torch\csrc\api\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>C:\Users\Oscar\AppData\Local\Programs\Python\Python36\libs</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>J:\AITicTacToe\libtorchDebug\lib;C:\Users\Oscar\AppData\Local\Programs\Python\Python36\libs</AdditionalLibraryDirectories>
+      <AdditionalDependencies>torch.lib;c10.lib;c10_cuda.lib;caffe2_nvrtc.lib;caffe2_module_test_dynamic.lib;clog.lib;cpuinfo.lib;libprotobufd.lib;libprotobuf-lited.lib;libprotocd.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
+    <ProjectReference>
+      <UseLibraryDependencyInputs>true</UseLibraryDependencyInputs>
+    </ProjectReference>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
@@ -146,17 +152,21 @@
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <ConformanceMode>true</ConformanceMode>
+      <ConformanceMode>false</ConformanceMode>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>C:\Users\Oscar\AppData\Local\Programs\Python\Python36\include;J:\AITicTacToe\C++GomokuAI\C++GomokuAI\Header files;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\Oscar\AppData\Local\Programs\Python\Python36\include;J:\AITicTacToe\C++GomokuAI\C++GomokuAI\Header files;J:\AITicTacToe\libtorch\include;J:\AITicTacToe\libtorch\include\torch\csrc\api\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>C:\Users\Oscar\AppData\Local\Programs\Python\Python36\libs</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>J:\AITicTacToe\libtorch\lib;C:\Users\Oscar\AppData\Local\Programs\Python\Python36\libs</AdditionalLibraryDirectories>
+      <AdditionalDependencies>torch.lib;c10.lib;c10_cuda.lib;caffe2_nvrtc.lib;caffe2_module_test_dynamic.lib;clog.lib;cpuinfo.lib;libprotobuf.lib;libprotobuf-lite.lib;libprotoc.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
+    <ProjectReference>
+      <UseLibraryDependencyInputs>true</UseLibraryDependencyInputs>
+    </ProjectReference>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="Header files\ai\ai_controller.h" />

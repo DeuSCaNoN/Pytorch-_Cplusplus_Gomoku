@@ -74,7 +74,7 @@ namespace GomokuUtils
 		std::ofstream myFile;
 		std::string fileName = "valueDataset" + std::to_string(fileNameNum) + ".txt";
 		myFile.open(fileName, std::ofstream::binary);
-		srand((unsigned int)time(NULL)); 
+		srand((unsigned int)time(NULL) + fileNameNum); 
 
 		for (int i = 0; i < 200; i++)
 		{
@@ -112,6 +112,15 @@ namespace GomokuUtils
 					exit(10);
 				}
 
+				unsigned char max_score = moveValues[ConvertToIndex(move_r, move_c, boardSide)];
+				if (max_score == 0)
+				{
+					moveValues[ConvertToIndex(move_r, move_c, boardSide)] = 1;
+					max_score = 1;
+				}
+				myFile.write(reinterpret_cast<const char *>(&max_score), sizeof(unsigned char));
+				myFile << std::endl;
+
 				myFile.write(moveValues, boardSide * boardSide);
 				myFile << std::endl;
 
@@ -120,6 +129,10 @@ namespace GomokuUtils
 					stateVal = 0.0;
 
 				stateVal = log(stateVal) / log(10000);
+				if (stateVal > 1)
+					stateVal = 1.0;
+				else if (stateVal < 0)
+					stateVal = 0.0;
 
 				myFile << std::to_string(stateVal) << std::endl;
 

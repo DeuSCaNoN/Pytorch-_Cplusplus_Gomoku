@@ -1,5 +1,9 @@
 #include "pch.h"
 #include "MonteCarloTreeSearch.h"
+#include "GomokuUtils.h"
+
+#include <api/renju_api.h>
+#include <ai/eval.h>
 
 #include <stdlib.h>
 #include <thread>
@@ -12,7 +16,9 @@ namespace MonteCarlo
 		: m_playouts(playouts)
 		, m_gameSpace(gameSpace)
 		, m_pRoot(new MonteCarloNode(nullptr, 1.0, gameSpace))
-	{}
+	{
+		m_expandChildrenFn = std::bind(&MonteCarloTreeSearch::ExpandChildrenBluPig_, this, std::placeholders::_1, std::placeholders::_2);
+	}
 
 	MonteCarloTreeSearch::~MonteCarloTreeSearch()
 	{
@@ -76,16 +82,7 @@ namespace MonteCarlo
 
 		if (game.GetGameWinState() == WinnerState_enum::None)
 		{
-			int size = 0;
-			int* pLegalMoves = game.GetLegalMoves(size);
-
-			double* probs = new double[size];
-			for (int i = 0; i < size; i++)
-			{
-				probs[i] = (double)1 / size;
-			}
-			pNode->ExpandChildren(pLegalMoves, probs, size);
-			delete probs;
+			m_expandChildrenFn(pNode, &game);
 		}
 
 		double leafValue = EvaluateRollout_(game);
@@ -175,5 +172,32 @@ namespace MonteCarlo
 		delete ppGames;
 
 		return EvalTotal / localSize;
+	}
+
+	void MonteCarloTreeSearch::ExpandChildrenBluPig_(MonteCarloNode* pNode, GomokuGame* pGame)
+	{
+		int size = 0;
+		int* pLegalMoves = pGame->GetLegalMoves(size);
+		int length = pGame->GetSideLength() * pGame->GetSideLength();
+
+		char* moveValues = new char[length];
+		memset(moveValues, 0, length);
+		int move_r, move_c, winning_player, actual_depth;
+		unsigned int node_count, eval_count;
+
+		int player = pGame->GetPlayerTurn() ? 1 : 2;
+
+		bool success = RenjuAPI::generateMove(pGame->GetBoard(), player, -1, 1500, 1, &actual_depth, &move_r, &move_c,
+			&winning_player, &node_count, &eval_count, nullptr, moveValues);
+
+		unsigned char max_score = moveValues[ConvertToIndex(move_r, move_c, pGame->GetSideLength())];
+
+		double* probs = new double[size];
+		for (int i = 0; i < size; i++)
+		{
+			probs[i] = moveValues[pLegalMoves[i]] / max_score;
+		}
+		pNode->ExpandChildren(pLegalMoves, probs, size);
+		delete probs;
 	}
 }

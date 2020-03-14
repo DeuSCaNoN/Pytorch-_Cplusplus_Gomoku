@@ -67,7 +67,7 @@ void RenjuAINegamax::heuristicNegamax(const char *gs, int player, int depth, int
     // Fixed depth or iterative deepening
     if (depth > 0) {
         if (actual_depth != nullptr) *actual_depth = depth;
-        heuristicNegamax(_gs, player, depth, depth, enable_ab_pruning,
+		heuristicNegamax(_gs, player, depth, depth, enable_ab_pruning,
                          INT_MIN / 2, INT_MAX / 2, move_r, move_c, pValueBoard);
     } else {
         // Iterative deepening
@@ -79,7 +79,7 @@ void RenjuAINegamax::heuristicNegamax(const char *gs, int player, int depth, int
             memcpy(_gs, gs, g_gs_size);
 
             // Execute negamax
-            heuristicNegamax(_gs, player, d, d, enable_ab_pruning,
+			heuristicNegamax(_gs, player, d, d, enable_ab_pruning,
                              INT_MIN / 2, INT_MAX / 2, move_r, move_c, pValueBoard);
 
             // Times
@@ -98,11 +98,12 @@ void RenjuAINegamax::heuristicNegamax(const char *gs, int player, int depth, int
 
 int RenjuAINegamax::heuristicNegamax(char *gs, int player, int initial_depth, int depth,
                                      bool enable_ab_pruning, int alpha, int beta,
-                                     int *move_r, int *move_c, char* pValueBoard) {
+                                     int *move_r, int *move_c,  char* pValueBoard) {
     // Count node
     ++g_node_count;
 
     int max_score = INT_MIN;
+	int min_score = INT_MAX;
     int opponent = player == 1 ? 2 : 1;
 
     // Search and sort possible moves
@@ -199,19 +200,36 @@ int RenjuAINegamax::heuristicNegamax(char *gs, int player, int initial_depth, in
             if (move_c != nullptr) *move_c = move.c;
         }
 
+		if (move.actual_score < min_score)
+			min_score = move.actual_score;
+
         // Alpha-beta
         int max_score_decayed = max_score;
         if (max_score >= 2) max_score_decayed = static_cast<int>(max_score_decayed * kScoreDecayFactor);
         if (max_score > alpha) alpha = max_score;
 
-		if (pValueBoard)
-		{
-			pValueBoard[move.r * g_board_size + move.c] = move.actual_score;
-		}
-
         if (enable_ab_pruning && max_score_decayed >= beta) break;
     }
 
+	if (pValueBoard)
+	{
+		for (int i = 0; i < size; ++i)
+		{
+			auto move = candidate_moves[i];
+			int score = move.actual_score;
+			if (min_score <= 0)
+			{
+				score = move.actual_score - min_score + 1;
+				if (score > 255)
+					score = 255;
+			}
+
+			pValueBoard[move.r * g_board_size + move.c] = score;
+			if (score == 0)
+				std::cout << "ZERO: " << move.actual_score << " " << min_score << std::endl;
+		}
+	}
+	
     // If no moves that are much better than blocking threatening moves, block them.
     // This attempts blocking even winning is impossible if the opponent plays optimally.
     if (depth == initial_depth && block_opponent && max_score < 0) {
@@ -222,8 +240,14 @@ int RenjuAINegamax::heuristicNegamax(char *gs, int player, int initial_depth, in
             if (move_r != nullptr) *move_r = blocking_move.r;
             if (move_c != nullptr) *move_c = blocking_move.c;
             max_score = blocking_move.actual_score;
+
+			if (pValueBoard)
+			{
+				pValueBoard[blocking_move.r * g_board_size + blocking_move.c] = -128;
+			}
         }
     }
+
     return max_score;
 }
 

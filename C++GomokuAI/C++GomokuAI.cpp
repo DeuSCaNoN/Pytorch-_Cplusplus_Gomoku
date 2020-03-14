@@ -38,21 +38,21 @@ int main()
 	short boardSize = 15;
 	short win = 5;
 
-	GomokuUtils::GenerateValueSet(boardSize);
-
-/*	GomokuGame game = GomokuGame(boardSize, win);
+	GomokuGame game = GomokuGame(boardSize, win);
 	game.PlayMove(7,7);
+	game.PlayMove(6, 7);
+	game.PlayMove(7, 6);
+	game.PlayMove(6, 6);
 	GomokuPolicyAgent agent;
-	agent.StartTraining(false);
-	agent.PredictMove(game.GetBoard(), 225, ConvertToIndex(7,7,15), false);
+	agent.PredictMove(game.GetBoard(), 225, ConvertToIndex(6,6,15), true);
 	
-	MonteCarlo::MonteCarloTreeSearch treeSearch(boardSize*boardSize, 400);
+	MonteCarlo::MonteCarloTreeSearch treeSearch(boardSize*boardSize, 20);
 	int index = treeSearch.GetMove(game);
 	game.PlayMove(index);
 	DrawMatrix(game.GetMatrix(), boardSize);
 
 	return game.IsMoveWinning(2, 2);
-*/
+
 }
 
 // Run program: Ctrl + F5 or Debug > Start Without Debugging menu
