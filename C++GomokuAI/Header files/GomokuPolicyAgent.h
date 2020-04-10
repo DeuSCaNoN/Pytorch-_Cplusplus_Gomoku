@@ -7,46 +7,38 @@
 
 #define BOARD_SIDE 15
 
+struct TrainingExample
+{
+	char board[BOARD_SIDE*BOARD_SIDE];
+	int moveMade;
+	float boardValue;
+	int lastMove;
+};
+
 // Define a new Module.
 struct Net : torch::nn::Module {
-	Net() {
-		// Construct and register two Linear submodules.
-		convN1 = register_module("convN1", torch::nn::Conv2d(4, 32, 3));
-		convN2 = register_module("convN2", torch::nn::Conv2d(32, 64, 3));
-		convN3 = register_module("convN3", torch::nn::Conv2d(64, 128, 3));
+	Net();
 
-		policyN1 = register_module("policyN1", torch::nn::Conv2d(128, 4, 1));
-		policyN2 = register_module("policyN2", torch::nn::Linear(4 * 9 * 9, BOARD_SIDE*BOARD_SIDE));
+	Net(short resNetSize);
 
-		valueN1 = register_module("valueN1", torch::nn::Conv2d(128, 2, 1));
-		valueN2 = register_module("valueN2", torch::nn::Linear(2 * 9 * 9, 64));
-		valueN3 = register_module("valueN3", torch::nn::Linear(64, 1));
-	}
+	torch::Tensor forwadPolicy(torch::Tensor x);
 
-	torch::Tensor forwadPolicy(torch::Tensor x)
-	{
-		x = torch::relu(convN1->forward(x));
-		x = torch::relu(convN2->forward(x));
-		x = torch::relu(convN3->forward(x));
+	torch::Tensor forwadValue(torch::Tensor x);
 
-		x = torch::relu(policyN1->forward(x));
-		return torch::log_softmax(policyN2->forward(x.reshape({x.sizes()[0], 4 *9 * 9})), 1);
-	}
+	void forwardBoth(torch::Tensor x, torch::Tensor& policy, torch::Tensor& value);
 
-	torch::Tensor forwadValue(torch::Tensor x)
-	{
-		x = torch::relu(convN1->forward(x));
-		x = torch::relu(convN2->forward(x));
-		x = torch::relu(convN3->forward(x));
-
-		x = torch::relu(valueN1->forward(x));
-		x = torch::relu(valueN2->forward(x.reshape({x.sizes()[0], 2 * 9 * 9 })));
-		return torch::tanh(valueN3->forward(x));
-	}
+	short m_residualNetSize;
 
 	// Use one of many "standard library" modules.
-	torch::nn::Conv2d convN1{ nullptr }, convN2{ nullptr }, convN3{ nullptr }, policyN1{ nullptr }, valueN1{ nullptr };
+	torch::nn::Conv2d convN1{ nullptr }, policyN1{ nullptr }, valueN1{ nullptr };
 	torch::nn::Linear policyN2{ nullptr }, valueN2{ nullptr }, valueN3{ nullptr };
+
+	std::vector<torch::nn::BatchNorm2d> m_residualBatch1;
+	std::vector<torch::nn::BatchNorm2d> m_residualBatch2;
+	std::vector<torch::nn::Conv2d> m_residualConv1;
+	std::vector<torch::nn::Conv2d> m_residualConv2;
+
+	torch::nn::BatchNorm2d batchNorm1{nullptr}, batchNorm2{ nullptr }, batchNorm3{ nullptr };
 };
 
 class GomokuPolicyAgent
@@ -58,16 +50,22 @@ public:
 
 	void SaveModel();
 
-	void ReloadCpuModel();
+	void Train(std::vector<TrainingExample>& trainingExamples, double learningRate, short epochs);
 
 	double PredictValue(char* board, int size, int lastMoveIndex, bool bTurn);
 
-	std::vector<double> PredictMove(char* board, int size, int lastMoveIndex, bool bTurn);
+	torch::Tensor PredictMove(char* board, int size, int lastMoveIndex, bool bTurn);
 private:
 
 	torch::Tensor CreateTensorBoard_(char* board, int size, int lastMoveIndex, bool bTurn);
 
-	std::shared_ptr<Net> m_pNetworkCpu;
+	float TrainGpuAsync_(
+		torch::optim::Adam adamOptimizer,
+		torch::Tensor inputTensor,
+		torch::Tensor valueAnswerTensor,
+		torch::Tensor policyAnswerTensor,
+		bool bVerbose);
+
 	std::shared_ptr<Net> m_pNetworkGpu;
 
 	std::string m_modelPath;
