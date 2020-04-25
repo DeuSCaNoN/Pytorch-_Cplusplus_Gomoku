@@ -37,6 +37,8 @@ public:
 	bool GetPlayerTurn() const;
 	short GetSideLength() const;
 	int* GetLegalMoves(int& size) const;
+	int GetLastMove() const;
+	int GetMovesPlayed() const;
 
 	WinnerState_enum GetGameWinState() const;
 private:
@@ -57,6 +59,7 @@ private:
 	int* m_pLegalMoves;
 	char* m_pGameBoard;
 	int m_movesPlayed;
+	int m_lastMovePlayed;
 
 	WinnerState_enum m_winner;
 	bool m_playerTurn;

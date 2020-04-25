@@ -19,21 +19,27 @@
     <Filter Include="Header Files\blupig-api">
       <UniqueIdentifier>{496f53f5-b9ff-4447-9aa9-27f93bb23490}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Header Files\Players">
+      <UniqueIdentifier>{b72191f7-2bb5-4560-aaab-b09cbf615eb8}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\MonteCarlo">
+      <UniqueIdentifier>{fd4d3d77-bdfe-4e7b-a5fc-a4f3eeadb088}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\MonteCarlo">
+      <UniqueIdentifier>{3d656074-29fd-4645-869d-26f9bf9c2b7c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\Players">
+      <UniqueIdentifier>{0c69632d-850f-48fd-ad96-4013f81eb5a0}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\Systems">
+      <UniqueIdentifier>{86d9f97d-75cd-4e6a-b2f7-ca00369c97d6}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\Systems">
+      <UniqueIdentifier>{cc01734d-3a2f-45a9-9d16-74b1e181cfdb}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="C++GomokuAI.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="Source files\GomokuGame.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="pch.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="Source files\MonteCarloNode.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="Source files\MonteCarloTreeSearch.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Source files\GomokuPolicyAgent.cpp">
@@ -66,21 +72,30 @@
     <ClCompile Include="Source files\blupig-api\api\renju_api.cc">
       <Filter>Source Files\blupig-api</Filter>
     </ClCompile>
+    <ClCompile Include="Source files\MonteCarloNode.cpp">
+      <Filter>Source Files\MonteCarlo</Filter>
+    </ClCompile>
+    <ClCompile Include="Source files\MonteCarloTreeSearch.cpp">
+      <Filter>Source Files\MonteCarlo</Filter>
+    </ClCompile>
+    <ClCompile Include="Source files\BluPigPlayer.cpp">
+      <Filter>Source Files\Players</Filter>
+    </ClCompile>
+    <ClCompile Include="C++GomokuAI.cpp">
+      <Filter>Source Files\Systems</Filter>
+    </ClCompile>
+    <ClCompile Include="Source files\GomokuGame.cpp">
+      <Filter>Source Files\Systems</Filter>
+    </ClCompile>
     <ClCompile Include="Source files\GomokuUtils.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Source Files\Systems</Filter>
+    </ClCompile>
+    <ClCompile Include="Source files\AgentPlayer.cpp">
+      <Filter>Source Files\Players</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Header files\GomokuGame.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="pch.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="Header files\MonteCarloNode.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="Header files\MonteCarloTreeSearch.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Header files\GomokuPolicyAgent.h">
@@ -113,8 +128,26 @@
     <ClInclude Include="Header files\api\renju_api.h">
       <Filter>Header Files\blupig-api</Filter>
     </ClInclude>
+    <ClInclude Include="Header files\BluPigPlayer.h">
+      <Filter>Header Files\Players</Filter>
+    </ClInclude>
+    <ClInclude Include="Header files\IPlayer.h">
+      <Filter>Header Files\Players</Filter>
+    </ClInclude>
+    <ClInclude Include="Header files\MonteCarloNode.h">
+      <Filter>Header Files\MonteCarlo</Filter>
+    </ClInclude>
+    <ClInclude Include="Header files\MonteCarloTreeSearch.h">
+      <Filter>Header Files\MonteCarlo</Filter>
+    </ClInclude>
     <ClInclude Include="Header files\GomokuUtils.h">
-      <Filter>Header Files</Filter>
+      <Filter>Header Files\Systems</Filter>
+    </ClInclude>
+    <ClInclude Include="Header files\GomokuGame.h">
+      <Filter>Header Files\Systems</Filter>
+    </ClInclude>
+    <ClInclude Include="Header files\AgentPlayer.h">
+      <Filter>Header Files\Players</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

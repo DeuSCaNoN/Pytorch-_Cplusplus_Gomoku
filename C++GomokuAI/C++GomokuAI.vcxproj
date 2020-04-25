@@ -75,14 +75,14 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
-    <IncludePath>J:\AITicTacToe\libtorchDebug\include;J:\AITicTacToe\libtorchDebug\include\torch\csrc\api\include;$(IncludePath)</IncludePath>
+    <IncludePath>J:\AITicTacToe\libtorchDebug\include;J:\AITicTacToe\libtorchDebug\include\torch\csrc\api\include;$(IncludePath);C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v10.1\include</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
-    <IncludePath>J:\AITicTacToe\libtorch\include;J:\AITicTacToe\libtorch\include\torch\csrc\api\include;$(IncludePath)</IncludePath>
+    <IncludePath>J:\AITicTacToe\libtorch\include;J:\AITicTacToe\libtorch\include\torch\csrc\api\include;$(IncludePath);C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v10.1\include</IncludePath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -110,12 +110,12 @@
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>false</ConformanceMode>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>C:\Users\Oscar\AppData\Local\Programs\Python\Python36\include;J:\AITicTacToe\C++GomokuAI\C++GomokuAI\Header files;J:\AITicTacToe\libtorchDebug\include;J:\AITicTacToe\libtorchDebug\include\torch\csrc\api\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\Oscar\AppData\Local\Programs\Python\Python36\include;J:\AITicTacToe\C++GomokuAI\C++GomokuAI\Header files;J:\AITicTacToe\libtorchDebug\include;J:\AITicTacToe\libtorchDebug\include\torch\csrc\api\include;%(AdditionalIncludeDirectories);C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v10.1\include</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>J:\AITicTacToe\libtorchDebug\lib;C:\Users\Oscar\AppData\Local\Programs\Python\Python36\libs</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>J:\AITicTacToe\libtorchDebug\lib;C:\Users\Oscar\AppData\Local\Programs\Python\Python36\libs;C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v10.1\lib\x64</AdditionalLibraryDirectories>
       <AdditionalDependencies>torch.lib;c10.lib;c10_cuda.lib;caffe2_nvrtc.lib;caffe2_module_test_dynamic.lib;clog.lib;cpuinfo.lib;libprotobufd.lib;libprotobuf-lited.lib;libprotocd.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <ProjectReference>
@@ -154,14 +154,14 @@
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>false</ConformanceMode>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>C:\Users\Oscar\AppData\Local\Programs\Python\Python36\include;J:\AITicTacToe\C++GomokuAI\C++GomokuAI\Header files;J:\AITicTacToe\libtorch\include;J:\AITicTacToe\libtorch\include\torch\csrc\api\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\Oscar\AppData\Local\Programs\Python\Python36\include;J:\AITicTacToe\C++GomokuAI\C++GomokuAI\Header files;J:\AITicTacToe\libtorch\include;J:\AITicTacToe\libtorch\include\torch\csrc\api\include;%(AdditionalIncludeDirectories);C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v10.1\include</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>J:\AITicTacToe\libtorch\lib;C:\Users\Oscar\AppData\Local\Programs\Python\Python36\libs</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>J:\AITicTacToe\libtorch\lib;C:\Users\Oscar\AppData\Local\Programs\Python\Python36\libs;C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v10.1\lib\x64</AdditionalLibraryDirectories>
       <AdditionalDependencies>torch.lib;c10.lib;c10_cuda.lib;caffe2_nvrtc.lib;caffe2_module_test_dynamic.lib;clog.lib;cpuinfo.lib;libprotobuf.lib;libprotobuf-lite.lib;libprotoc.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <ProjectReference>
@@ -174,7 +174,10 @@
     <ClInclude Include="Header files\ai\negamax.h" />
     <ClInclude Include="Header files\ai\utils.h" />
     <ClInclude Include="Header files\api\renju_api.h" />
+    <ClInclude Include="Header files\BluPigPlayer.h" />
     <ClInclude Include="Header files\GomokuPolicyAgent.h" />
+    <ClInclude Include="Header files\AgentPlayer.h" />
+    <ClInclude Include="Header files\IPlayer.h" />
     <ClInclude Include="Header files\MonteCarloNode.h" />
     <ClInclude Include="Header files\MonteCarloTreeSearch.h" />
     <ClInclude Include="Header files\protocols\cli.h" />
@@ -182,6 +185,7 @@
     <ClInclude Include="Header files\utils\globals.h" />
     <ClInclude Include="Header files\utils\json.h" />
     <ClInclude Include="pch.h" />
+    <ClCompile Include="Source files\AgentPlayer.cpp" />
     <ClCompile Include="Source files\blupig-api\ai\ai_controller.cc" />
     <ClCompile Include="Source files\blupig-api\ai\eval.cc" />
     <ClCompile Include="Source files\blupig-api\ai\negamax.cc" />
@@ -191,6 +195,7 @@
     <ClCompile Include="Source files\blupig-api\protocols\cli.cc" />
     <ClCompile Include="Source files\blupig-api\protocols\gomocup.cc" />
     <ClCompile Include="Source files\blupig-api\utils\globals.cc" />
+    <ClCompile Include="Source files\BluPigPlayer.cpp" />
     <ClCompile Include="Source files\GomokuGame.cpp" />
     <ClCompile Include="Source files\GomokuPolicyAgent.cpp" />
     <ClCompile Include="Source files\MonteCarloNode.cpp" />

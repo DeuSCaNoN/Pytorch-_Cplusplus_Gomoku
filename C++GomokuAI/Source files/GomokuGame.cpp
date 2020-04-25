@@ -14,6 +14,7 @@ GomokuGame::GomokuGame(short sideLength, short winAmount)
 	, m_winAmount(winAmount)
 	, m_boardLength(sideLength * sideLength)
 	, m_movesPlayed(0)
+	, m_lastMovePlayed(-1)
 	, m_winner(WinnerState_enum::None)
 	, m_playerTurn(true)
 {
@@ -35,6 +36,7 @@ GomokuGame::GomokuGame(GomokuGame const& other)
 	m_movesPlayed = other.m_movesPlayed;
 	m_winner = other.m_winner;
 	m_playerTurn = other.m_playerTurn;
+	m_lastMovePlayed = other.m_lastMovePlayed;
 
 	m_pGameBoard = new char[m_boardLength];
 	m_pLegalMoves = new int[m_boardLength - m_movesPlayed];
@@ -56,6 +58,7 @@ void GomokuGame::operator=(GomokuGame const& other)
 	m_movesPlayed = other.m_movesPlayed;
 	m_winner = other.m_winner;
 	m_playerTurn = other.m_playerTurn;
+	m_lastMovePlayed = other.m_lastMovePlayed;
 
 	delete m_pGameBoard;
 	delete m_pLegalMoves;
@@ -77,6 +80,7 @@ void GomokuGame::ResetBoard()
 
 	m_winner = WinnerState_enum::None;
 	m_movesPlayed = 0;
+	m_lastMovePlayed = -1;
 	m_playerTurn = true;
 }
 
@@ -135,6 +139,16 @@ int* GomokuGame::GetLegalMoves(int& size) const
 	return m_pLegalMoves;
 }
 
+int GomokuGame::GetLastMove() const
+{
+	return m_lastMovePlayed;
+}
+
+int GomokuGame::GetMovesPlayed() const
+{
+	return m_movesPlayed;
+}
+
 bool GomokuGame::PlayMove(int index)
 {
 	if (m_pGameBoard[index] != _EMPTYSYMBOL_)
@@ -159,6 +173,7 @@ bool GomokuGame::PlayMove(int index)
 		m_winner = WinnerState_enum::Draw;
 
 	m_playerTurn = !m_playerTurn;
+	m_lastMovePlayed = index;
 	return true;
 }
 

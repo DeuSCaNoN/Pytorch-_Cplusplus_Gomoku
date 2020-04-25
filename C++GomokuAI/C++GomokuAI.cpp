@@ -9,49 +9,36 @@
 
 #include <iostream>
 
-void DrawMatrix(char** matrix, int sideLength)
-{
-	std::cout << "\n";
-	for (int i = 0; i < sideLength; i++)
-	{
-		for (int j = 0; j < sideLength; j++)
-		{
-			char output = 0;
-			switch (matrix[i][j])
-			{
-			case 0:
-				break;
-			case 1:
-				output = '1';
-				break;
-			case 2:
-				output = '2';
-			}
-			std::cout << output << " | ";
-		}
-		std::cout << "\n";
-	}
-}
-
 int main()
 {
+	GomokuUtils::TrainBluPig();
+
 	short boardSize = 15;
 	short win = 5;
 
-	GomokuGame game = GomokuGame(boardSize, win);
-	game.PlayMove(7,7);
-	game.PlayMove(6, 7);
-	game.PlayMove(7, 6);
-	game.PlayMove(6, 6);
-	GomokuPolicyAgent agent;
-	agent.PredictMove(game.GetBoard(), 225, ConvertToIndex(6,6,15), true);
-	
-	MonteCarlo::MonteCarloTreeSearch treeSearch(boardSize*boardSize, 20);
-	int index = treeSearch.GetMove(game);
-	game.PlayMove(index);
-	DrawMatrix(game.GetMatrix(), boardSize);
+	std::shared_ptr<GomokuPolicyAgent> pAgent = std::make_shared<GomokuPolicyAgent>();
+//	MonteCarlo::MonteCarloTreeSearch treeSearch((int)(boardSize*boardSize), pAgent, 200);
 
-	return game.IsMoveWinning(2, 2);
+	GomokuGame game = GomokuGame(boardSize, win);
+	game.PlayMove(112);
+	game.PlayMove(0);
+/*	while (game.GetGameWinState() == WinnerState_enum::None)
+	{
+		int index = treeSearch.GetMove(game);
+		system("CLS");
+		game.PlayMove(index);
+		treeSearch.StepInTree(index);
+		GomokuUtils::DrawMatrix(game.GetBoard(), boardSize);
+
+		index = treeSearch.GetMove(game);
+		game.PlayMove(index);
+		GomokuUtils::DrawMatrix(game.GetBoard(), boardSize);
+		treeSearch.StepInTree(index);
+	}
+*/
+	std::cout << pAgent->PredictValue(game.GetBoard(), 225, 0, true);
+
+	return 0;
 
 }
 

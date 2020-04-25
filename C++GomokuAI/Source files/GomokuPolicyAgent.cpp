@@ -119,7 +119,7 @@ GomokuPolicyAgent::GomokuPolicyAgent(std::string const& modelPath)
 	}
 
 	m_pNetworkGpu->to(torch::kCUDA);
-	m_pNetworkGpu->train();
+	m_pNetworkGpu->eval();
 }
 
 GomokuPolicyAgent::~GomokuPolicyAgent()
@@ -137,10 +137,9 @@ void GomokuPolicyAgent::SaveModel()
 
 double GomokuPolicyAgent::PredictValue(char* board, int size, int lastMoveIndex, bool bTurn)
 {
-	torch::Tensor boardTensor = CreateTensorBoard_(board, size, lastMoveIndex, bTurn).to(torch::kCUDA);
-	torch::Tensor valueTensor = m_pNetworkGpu->forwadValue(boardTensor.reshape({1,4,BOARD_SIDE,BOARD_SIDE}));
-
-	return valueTensor.item<double>();
+	torch::Tensor boardTensor = CreateTensorBoard_(board, size, lastMoveIndex, bTurn);
+	torch::Tensor valueTensor = m_pNetworkGpu->forwadValue(boardTensor.reshape({1,4,BOARD_SIDE,BOARD_SIDE}).to(torch::kCUDA));
+	return valueTensor[0].item<double>();
 }
 
 torch::Tensor GomokuPolicyAgent::PredictMove(char* board, int size, int lastMoveIndex, bool bTurn)
@@ -153,9 +152,9 @@ torch::Tensor GomokuPolicyAgent::PredictMove(char* board, int size, int lastMove
 
 void GomokuPolicyAgent::Train(std::vector<TrainingExample>& trainingExamples, double learningRate, short epochs)
 {
+	m_pNetworkGpu->train();
 	torch::optim::Adam adamOptimizer(m_pNetworkGpu->parameters(), learningRate);
 	size_t setSize = trainingExamples.size();
-	std::thread trainGpuThread;
 	std::future<float> promise;
 
 	bool bRepopulate = trainingExamples.size() > BATCH_SIZE;
@@ -198,14 +197,22 @@ void GomokuPolicyAgent::Train(std::vector<TrainingExample>& trainingExamples, do
 
 				if (batchIndex >= BATCH_SIZE || index == setSize)
 				{
-					if (trainGpuThread.joinable())
+					if (promise.valid())
 					{
-						trainGpuThread.join();
-						trainGpuThread.~thread();
-					}
+						float loss = promise.get();
+						if (loss < 3.0)
+						{
+							learningRate = 0.0002;
 
+						}
+						else
+						{
+							learningRate = 0.002;
+						}
+						adamOptimizer = torch::optim::Adam(m_pNetworkGpu->parameters(), learningRate);
+					}
 					bool bVerbose = index % BATCH_VERBOSE_SIZE == 0 || index == setSize;
-					trainGpuThread = std::thread(&GomokuPolicyAgent::TrainGpuAsync_, this, adamOptimizer, inputTensor, valueAnswerTensor, policyAnswerTensor, bVerbose);
+					promise = std::async(&GomokuPolicyAgent::TrainGpuAsync_, this, adamOptimizer, inputTensor, valueAnswerTensor, policyAnswerTensor, bVerbose);
 
 					batchSize = setSize - index;
 					if (batchSize < BATCH_SIZE && batchSize > 0)
@@ -221,24 +228,18 @@ void GomokuPolicyAgent::Train(std::vector<TrainingExample>& trainingExamples, do
 		}
 		else
 		{
-			if (trainGpuThread.joinable())
-			{
-				trainGpuThread.join();
-				trainGpuThread.~thread();
-			}
-
 			if (promise.valid())
 			{
-				float lossRate = promise.get();
-				if (lossRate < 3.0)
-					learningRate = 0.002;
-				else if (lossRate < 2.0)
+				float loss = promise.get();
+				if (loss < 3.0)
+				{
 					learningRate = 0.0002;
-				else if (lossRate < 1.0)
-					learningRate = 0.00002;
-				else if (lossRate > 10.0)
-					learningRate *= 0.5;
-
+					
+				}
+				else
+				{
+					learningRate = 0.002;
+				}
 				adamOptimizer = torch::optim::Adam(m_pNetworkGpu->parameters(), learningRate);
 			}
 
@@ -247,10 +248,11 @@ void GomokuPolicyAgent::Train(std::vector<TrainingExample>& trainingExamples, do
 		}
 	}
 
-	if (trainGpuThread.joinable())
+	if (promise.valid())
 	{
-		trainGpuThread.join();
+		promise.get();
 	}
+	m_pNetworkGpu->eval();
 }
 
 /*--------------------------------------------------------------*/
@@ -312,7 +314,9 @@ float GomokuPolicyAgent::TrainGpuAsync_(
 	adamOptimizer.step();
 
 	if (bVerbose)
+	{
 		std::cout << lossTensor.data() << std::endl;
+	}
 
 	return lossTensor.item<float>();
 }

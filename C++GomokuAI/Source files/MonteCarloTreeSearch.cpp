@@ -2,8 +2,7 @@
 #include "MonteCarloTreeSearch.h"
 #include "GomokuUtils.h"
 
-#include <api/renju_api.h>
-#include <ai/eval.h>
+#include "torch/torch.h"
 
 #include <stdlib.h>
 #include <thread>
@@ -12,13 +11,23 @@
 
 namespace MonteCarlo
 {
-	MonteCarloTreeSearch::MonteCarloTreeSearch(int gameSpace, int playouts)
+	MonteCarloTreeSearch::MonteCarloTreeSearch(int gameSpace, std::shared_ptr<GomokuPolicyAgent> pAgent, int playouts)
 		: m_playouts(playouts)
 		, m_gameSpace(gameSpace)
 		, m_pRoot(new MonteCarloNode(nullptr, 1.0, gameSpace))
+		, m_pAgent(pAgent)
 	{
-		m_expandChildrenFn = std::bind(&MonteCarloTreeSearch::ExpandChildrenBluPig_, this, std::placeholders::_1, std::placeholders::_2);
-	}
+		if (m_pAgent)
+		{
+			m_expandChildrenFn = std::bind(&MonteCarloTreeSearch::ExpandChildrenPolicyAgent_, this, std::placeholders::_1, std::placeholders::_2);
+			m_playoutGameFn = std::bind(&MonteCarloTreeSearch::AgentPlayout_, this, std::placeholders::_1);
+		}
+		else
+		{
+			m_expandChildrenFn = std::bind(&MonteCarloTreeSearch::DefaultExpandChildren_, this, std::placeholders::_1, std::placeholders::_2);
+			m_playoutGameFn = std::bind(&MonteCarloTreeSearch::DefaultPlayout_, this, std::placeholders::_1);
+		}
+	}	
 
 	MonteCarloTreeSearch::~MonteCarloTreeSearch()
 	{
@@ -28,9 +37,24 @@ namespace MonteCarlo
 
 	/*--------------------------------------------------------------*/
 
+	void MonteCarloTreeSearch::Reset()
+	{
+		m_pRoot->DeleteChildrenExcept(-1);
+		delete m_pRoot;
+		m_pRoot = new MonteCarloNode(nullptr, 1.0, m_gameSpace);
+	}
+
+	MonteCarloNode* const MonteCarloTreeSearch::GetRoot()
+	{
+		return m_pRoot;
+	}
+
 	void MonteCarloTreeSearch::StepInTree(int index)
 	{
 		_ASSERT(index >= 0 && index < m_gameSpace);
+		if (m_pRoot->GetChildrenCount() == 0) // Probably first move of the game
+			return;
+
 		if (m_pRoot->GetChildren()[index] != nullptr)
 		{
 			MonteCarloNode* pTemp = m_pRoot->GetChildren()[index];
@@ -48,18 +72,113 @@ namespace MonteCarlo
 
 	int MonteCarloTreeSearch::GetMove(GomokuGame const& game)
 	{
+		if (game.GetLastMove() == -1)
+			return m_gameSpace / 2;
+
 		for (int i = 0; i < m_playouts; i++)
 		{
 			GomokuGame gameCopy(game);
-			Playout_(gameCopy);
+			m_playoutGameFn(gameCopy);
 		}
 
-		return m_pRoot->Select(game.GetPlayerTurn());
+		return m_pRoot->SelectVisits();
 	}
 
 	/*--------------------------------------------------------------*/
 
-	void MonteCarloTreeSearch::Playout_(GomokuGame& game)
+	void MonteCarloTreeSearch::AgentPlayout_(GomokuGame& game)
+	{
+		if (m_pRoot->GetChildrenCount() > 0)
+		{
+			int rootVisists = m_pRoot->GetVisits();
+			short branchPaths = 1; //m_pRoot->GetChildrenCount() >= 4 ? 4 : m_pRoot->GetChildrenCount();
+			int* values = new int[1]; // new int[branchPaths];
+			values[0] = m_pRoot->Select(game.GetPlayerTurn()); // m_pRoot->SelectBestFour(game.GetPlayerTurn(), values);
+			std::function<void(GomokuGame&, MonteCarloNode*)> playoutFn = std::bind(&MonteCarloTreeSearch::AgentPlayoutAsync_, this, std::placeholders::_1, std::placeholders::_2);
+			
+			std::vector<std::thread> threads;
+			threads.reserve(branchPaths-1);
+			for (int i = 0; i < branchPaths - 1; i++)
+			{
+				MonteCarloNode* pNode = m_pRoot->GetChildren()[values[i]];
+				_ASSERT(pNode != nullptr);
+				GomokuGame gameCopy(game);
+				gameCopy.PlayMove(values[i]);
+				threads.push_back(std::thread(playoutFn, gameCopy, pNode));
+			}
+
+
+			MonteCarloNode* pNode3 = m_pRoot->GetChildren()[values[0]]; // 3]];
+			_ASSERT(pNode3 != nullptr);
+			game.PlayMove(values[0]); //3]);
+			AgentPlayoutAsync_(game, pNode3);
+
+			for (int i = 0; i < threads.size(); ++i)
+			{
+				threads[i].join();
+			}
+			
+			rootVisists += 1;
+			m_pRoot->SetVisits(rootVisists);
+			delete[] values;
+		}
+		else
+		{
+			m_pRoot->Update(0);
+			m_expandChildrenFn(m_pRoot, &game);
+		}
+	}
+
+	void MonteCarloTreeSearch::AgentPlayoutAsync_(GomokuGame& game, MonteCarloNode* pNode)
+	{
+		bool playerToSearch = game.GetPlayerTurn();
+		while (pNode->GetChildrenCount() > 0)
+		{
+			int actionIndex = pNode->Select(game.GetPlayerTurn());
+
+			{
+				_ASSERT(actionIndex >= 0 && actionIndex < m_gameSpace);
+				pNode = pNode->GetChildren()[actionIndex];
+				_ASSERT(pNode != nullptr);
+			}
+
+			if (!game.PlayMove(actionIndex))
+			{
+				throw _HAS_EXCEPTIONS;
+				exit(-1);
+			}
+		}
+
+		std::thread expandThread;
+		switch (game.GetGameWinState())
+		{
+		case WinnerState_enum::None:
+			expandThread = std::thread(m_expandChildrenFn, pNode, &game);
+			break;
+		case WinnerState_enum::P1:
+			pNode->RecursiveUpdate(5.0);
+			return;
+		case WinnerState_enum::P2:
+			pNode->RecursiveUpdate(-5.0);
+			return;
+		case WinnerState_enum::Draw:
+			pNode->RecursiveUpdate(0.0);
+			return;
+		default:
+			expandThread = std::thread(m_expandChildrenFn, pNode, &game);
+			break;
+		}
+
+		double leafValue = m_pAgent->PredictValue(game.GetBoard(), m_gameSpace, game.GetLastMove(), game.GetPlayerTurn());
+
+		pNode->RecursiveUpdate(leafValue);
+		if (expandThread.joinable())
+			expandThread.join();
+	}
+
+	/*--------------------------------------------------------------*/
+
+	void MonteCarloTreeSearch::DefaultPlayout_(GomokuGame& game)
 	{
 		MonteCarloNode* pNode = m_pRoot;
 		bool playerToSearch = game.GetPlayerTurn();
@@ -79,13 +198,14 @@ namespace MonteCarlo
 				exit(-1);
 			}
 		}
-
+		
 		if (game.GetGameWinState() == WinnerState_enum::None)
 		{
 			m_expandChildrenFn(pNode, &game);
 		}
 
-		double leafValue = EvaluateRollout_(game);
+		double leafValue = DefaultEvaluateRollout_(game);
+		
 
 		pNode->RecursiveUpdate(leafValue);
 	}
@@ -115,7 +235,7 @@ namespace MonteCarlo
 		}
 	}
 
-	double MonteCarloTreeSearch::EvaluateRollout_(GomokuGame& game)
+	double MonteCarloTreeSearch::DefaultEvaluateRollout_(GomokuGame const& game)
 	{
 		WinnerState_enum state = game.GetGameWinState();
 		if (state != WinnerState_enum::None)
@@ -174,30 +294,23 @@ namespace MonteCarlo
 		return EvalTotal / localSize;
 	}
 
-	void MonteCarloTreeSearch::ExpandChildrenBluPig_(MonteCarloNode* pNode, GomokuGame* pGame)
+	/*--------------------------------------------------------------*/
+
+	void MonteCarloTreeSearch::ExpandChildrenPolicyAgent_(MonteCarloNode* pNode, GomokuGame* pGame)
 	{
 		int size = 0;
 		int* pLegalMoves = pGame->GetLegalMoves(size);
-		int length = pGame->GetSideLength() * pGame->GetSideLength();
 
-		char* moveValues = new char[length];
-		memset(moveValues, 0, length);
-		int move_r, move_c, winning_player, actual_depth;
-		unsigned int node_count, eval_count;
+		torch::Tensor& agentPolicy = m_pAgent->PredictMove(pGame->GetBoard(), m_gameSpace, pGame->GetLastMove(), pGame->GetPlayerTurn());
 
-		int player = pGame->GetPlayerTurn() ? 1 : 2;
+		pNode->ExpandChildren(pLegalMoves, agentPolicy, size);
+	}
 
-		bool success = RenjuAPI::generateMove(pGame->GetBoard(), player, -1, 1500, 1, &actual_depth, &move_r, &move_c,
-			&winning_player, &node_count, &eval_count, nullptr, moveValues);
+	void MonteCarloTreeSearch::DefaultExpandChildren_(MonteCarloNode* pNode, GomokuGame* pGame)
+	{
+		int size = 0;
+		int* pLegalMoves = pGame->GetLegalMoves(size);
 
-		unsigned char max_score = moveValues[ConvertToIndex(move_r, move_c, pGame->GetSideLength())];
-
-		double* probs = new double[size];
-		for (int i = 0; i < size; i++)
-		{
-			probs[i] = moveValues[pLegalMoves[i]] / max_score;
-		}
-		pNode->ExpandChildren(pLegalMoves, probs, size);
-		delete probs;
+		pNode->DefaultExpandChildren(pLegalMoves, size);
 	}
 }

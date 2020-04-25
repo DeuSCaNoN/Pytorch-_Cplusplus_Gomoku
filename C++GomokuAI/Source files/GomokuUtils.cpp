@@ -1,7 +1,9 @@
 #include "pch.h"
 #include "GomokuUtils.h"
-
 #include "GomokuGame.h"
+#include "GomokuPolicyAgent.h"
+#include <BluPigPlayer.h>
+#include <AgentPlayer.h>
 
 #include <api/renju_api.h>
 #include <ai/eval.h>
@@ -12,10 +14,21 @@
 #include <math.h>
 
 #include <vector>
+#include <future>
 #include <thread>
+
+#define MAX_EXAMPLE_SIZE 5000
 
 namespace GomokuUtils
 {
+	void WriteExampleSetToFile_(std::vector<TrainingExample> exampleSet, short fileNameNum);
+
+	std::vector<TrainingExample> GetExampleSetFromFile_(short fileNameNum);
+
+	bool GetAllExampleSets_(std::vector<TrainingExample>& outputVector);
+
+	std::vector<TrainingExample> GenerateExamplesFromPlay_(PlayGeneratorCfg const& cfg);
+
 	void ConvertToRowCol(
 		int index,
 		int sideLength,
@@ -26,157 +39,386 @@ namespace GomokuUtils
 		col = index % sideLength;
 	}
 
-	void GenerateDataSet(short boardSide)
+	void DrawMatrix(char* matrix, int sideLength)
 	{
-		GomokuGame game = GomokuGame(boardSide, 5);
-
-		std::ofstream myFile;
-		myFile.open("dataset.txt", std::ofstream::binary);
-
-		for (int i = 0; i < 15; i++)
+		std::cout << "\n" << "   ";
+		for (int i = 0; i < sideLength; i++)
 		{
-			srand((unsigned int)time(NULL));
-			int initialMove = rand() % (boardSide * boardSide);
-			game.PlayMove(initialMove);
-			int lastMove = initialMove;
-
-			while (game.GetGameWinState() == WinnerState_enum::None)
-			{
-				myFile.write(game.GetBoard(), boardSide * boardSide);
-				myFile << std::endl;
-				int move_r, move_c, winning_player, actual_depth;
-				unsigned int node_count, eval_count;
-
-				bool success = RenjuAPI::generateMove(game.GetBoard(), 1, -1, 1500, 1, &actual_depth, &move_r, &move_c,
-					&winning_player, &node_count, &eval_count, nullptr, nullptr);
-
-				int moveIndex = ConvertToIndex(move_r, move_c, boardSide);
-				myFile.write(reinterpret_cast<const char *>(&moveIndex), sizeof(int));
-				myFile << std::endl;
-				game.PlayMove(moveIndex);
-				
-				myFile.write(reinterpret_cast<const char *>(&lastMove), sizeof(int));
-				myFile << std::endl;
-
-				lastMove = moveIndex;
-			}
-
-			game.ResetBoard();
+			std::cout << i << "  ";
+			if (i < 10)
+				std::cout << " ";
 		}
-
-		myFile.close();
+		std::cout << std::endl;
+		for (int i = 0; i < sideLength; i++)
+		{
+			std::cout << i << " ";
+			if (i < 10)
+				std::cout << " ";
+			for (int j = 0; j < sideLength; j++)
+			{
+				char output = 0;
+				switch (matrix[i*sideLength + j])
+				{
+				case 0:
+					break;
+				case 1:
+					output = 'X';
+					break;
+				case 2:
+					output = 'O';
+				}
+				std::cout << output << " | ";
+			}
+			std::cout << "\n";
+		}
 	}
 
-	void GenerateValueSetAsync_(short boardSide, int fileNameNum)
+	void TeachFromValueSet(bool bGenerate)
 	{
-		GomokuGame game = GomokuGame(boardSide, 5);
-
-		std::ofstream myFile;
-		std::string fileName = "valueDataset" + std::to_string(fileNameNum) + ".txt";
-		myFile.open(fileName, std::ofstream::binary);
-		srand((unsigned int)time(NULL) + fileNameNum); 
-
-		for (int i = 0; i < 200; i++)
+		std::vector<TrainingExample> exampleSet;
+		bool bExamplesFound = false;
+		if (!bGenerate)
 		{
-			int player = 0;
-			int lastMove = 0;
-			short initialMoves = rand() % 10 + 1;
-			for (int j = 0; j < initialMoves; j++)
+			bExamplesFound = GetAllExampleSets_(exampleSet);
+		}
+		
+		if (!bExamplesFound)
+		{
+			unsigned concurentThreadsSupported = std::thread::hardware_concurrency();
+			std::vector<std::future<std::vector<TrainingExample>>> pPromises;
+			pPromises.reserve(concurentThreadsSupported - 1);
+			auto pBluPigPlayer = std::make_shared<Player::BluPigPlayer>();
+
+			for (unsigned short i = 1; i < concurentThreadsSupported; i++)
 			{
-				int size = 0;
-				int* const pLegalMoves = game.GetLegalMoves(size);
-				int initialMove = pLegalMoves[rand() % (size)];
-				game.PlayMove(initialMove);
-				lastMove = initialMove;
-				player = (player + 1) % 2;
+				PlayGeneratorCfg cfg({i, 500, true, true, true, true, pBluPigPlayer, pBluPigPlayer, false, -1 });
+				pPromises.push_back(std::async(&GenerateExamplesFromPlay_, cfg));
 			}
 
-			while (game.GetGameWinState() == WinnerState_enum::None)
+			PlayGeneratorCfg cfg({ 0,500, true, true, true, true, pBluPigPlayer, pBluPigPlayer, false, -1 });
+			exampleSet = GenerateExamplesFromPlay_(cfg);
+			WriteExampleSetToFile_(exampleSet, 15);
+
+			std::vector<std::thread> threads;
+			threads.reserve(pPromises.size());
+			for (int i = 0; i < pPromises.size(); i++)
 			{
-				myFile.write(game.GetBoard(), boardSide * boardSide);
-				myFile << std::endl;
+				std::vector<TrainingExample> subExampleSet = pPromises[i].get();
+				auto thread = std::thread(WriteExampleSetToFile_, subExampleSet, i);
+				threads.push_back(std::move(thread));
 
-				char* moveValues = new char[boardSide*boardSide];
-				memset(moveValues, 0, boardSide*boardSide);
-				int move_r, move_c, winning_player, actual_depth;
-				unsigned int node_count, eval_count;
+				exampleSet.insert(exampleSet.end(), subExampleSet.begin(), subExampleSet.end());
+			}
 
-				bool success = RenjuAPI::generateMove(game.GetBoard(), player + 1, -1, 1500, 1, &actual_depth, &move_r, &move_c,
-					&winning_player, &node_count, &eval_count, nullptr, moveValues);
+			for (int i = 0; i < threads.size(); i++)
+			{
+				threads[i].join();
+			}
+		}
 
-				if (!success || move_r < 0 || move_c < 0)
+		GomokuPolicyAgent agent = GomokuPolicyAgent();
+		agent.Train(exampleSet, 0.02, 15);
+
+		agent.SaveModel();
+	}
+
+	/*------------------------------------------------------------------------------------------------*/
+
+	void TrainBluPig()
+	{
+		std::shared_ptr<GomokuPolicyAgent> pAgent = std::make_shared<GomokuPolicyAgent>();
+		auto pBluPigPlayer = std::make_shared<Player::BluPigPlayer>();
+		std::vector<TrainingExample> exampleSet;
+
+		Evaluate();
+		
+		while (true)
+		{
+			exampleSet.clear();
+			std::future<std::vector<TrainingExample>> promise1;
+			std::future<std::vector<TrainingExample>> promise2;
+
+			auto pAgentPlayer = std::make_shared<Player::AgentPlayer>(pAgent, 1200);
+			PlayGeneratorCfg cfg({ 0, 1, true, false, true, true, pBluPigPlayer, pAgentPlayer, true, -2 });
+			promise1 = std::async(&GenerateExamplesFromPlay_, cfg);
+
+			auto pAgentPlayer2 = std::make_shared<Player::AgentPlayer>(pAgent, 1200);
+			PlayGeneratorCfg cfg2({ 0, 1, true, false, true, true, pAgentPlayer2, pBluPigPlayer, true, -2 });
+			promise2 = std::async(&GenerateExamplesFromPlay_, cfg2);
+
+			PlayGeneratorCfg cfg3({ 0, 1, true, false, true, true, pBluPigPlayer, pBluPigPlayer, true, -1 });
+			exampleSet = GenerateExamplesFromPlay_(cfg3);
+
+			std::vector<TrainingExample> subExampleSet = promise1.get();
+			exampleSet.insert(exampleSet.end(), subExampleSet.begin(), subExampleSet.end());
+
+			subExampleSet = promise2.get();
+			exampleSet.insert(exampleSet.end(), subExampleSet.begin(), subExampleSet.end());
+
+			pAgent->Train(exampleSet, 0.002, 20);
+			pAgent->SaveModel();
+		}
+	}
+
+	void TrainSelfPlay()
+	{
+		std::shared_ptr<GomokuPolicyAgent> pAgent = std::make_shared<GomokuPolicyAgent>();
+		std::vector<TrainingExample> exampleSet;
+
+		unsigned supportedGames = std::thread::hardware_concurrency() / 4;
+		std::vector<int> startMove = { 112,96,113,97,126,98,114,127 };
+
+		while (true)
+		{
+			exampleSet.clear();
+			std::vector<std::future<std::vector<TrainingExample>>> pPromises;
+			pPromises.reserve(supportedGames);
+
+			for (unsigned short i = 0; i < supportedGames; i++)
+			{
+				auto pAgentPlayer = std::make_shared<Player::AgentPlayer>(pAgent, 200);
+				PlayGeneratorCfg cfg({ i, 1, true, false, true, true, pAgentPlayer, pAgentPlayer, true, startMove[i] });
+				pPromises.push_back(std::async(&GenerateExamplesFromPlay_, cfg));
+			}
+
+			for (int i = 0; i < pPromises.size(); i++)
+			{
+				std::vector<TrainingExample> subExampleSet = pPromises[i].get();
+				exampleSet.insert(exampleSet.end(), subExampleSet.begin(), subExampleSet.end());
+			}
+
+			pAgent->Train(exampleSet, 0.002, 10);
+			pAgent->SaveModel();
+		}
+	}
+
+	short Evaluate()
+	{
+		std::cout << "Evaluating" << std::endl;
+		std::shared_ptr<GomokuPolicyAgent> pAgent = std::make_shared<GomokuPolicyAgent>();
+		std::shared_ptr<GomokuPolicyAgent> pAgentOld = std::make_shared<GomokuPolicyAgent>("GomokuModel_Old.pt");
+
+		std::future<std::vector<TrainingExample>> game1Promise;
+		auto pAgentPlayer = std::make_shared<Player::AgentPlayer>(pAgent, 1200);
+		auto pAgentPlayerOld = std::make_shared<Player::AgentPlayer>(pAgentOld, 1200);
+
+		PlayGeneratorCfg cfg({ 0, 1, false, false, true, true, pAgentPlayer, pAgentPlayerOld, true, -1 });
+		std::vector<TrainingExample> subExampleSet = GenerateExamplesFromPlay_(cfg);
+
+		short winAmount = 0;
+		if (subExampleSet.size() > 1)
+		{
+			bool bAgentWon = subExampleSet[0].boardValue > 0;
+			std::cout << "P1: Agent vs P2: Old Agent " << bAgentWon << std::endl;
+
+			if (bAgentWon)
+				winAmount++;
+		}
+
+		pAgentPlayer->ClearTree();
+		pAgentPlayerOld->ClearTree();
+
+		PlayGeneratorCfg cfg2({ 0, 1, false, false, true, false, pAgentPlayerOld, pAgentPlayer, true, -1 });
+		subExampleSet = GenerateExamplesFromPlay_(cfg);
+
+		if (subExampleSet.size() > 1)
+		{
+			bool bAgentWon = subExampleSet[0].boardValue < 0;
+			std::cout << "P1: Old Agent vs P2: Agent " << bAgentWon << std::endl;
+
+			if (bAgentWon)
+				winAmount++;
+		}
+
+		std::cout << "Evaluating Done" << std::endl;
+		return winAmount;
+	}
+
+	/*------------------------------------------------------------------------------------------------*/
+
+	std::vector<TrainingExample> GenerateExamplesFromPlay_(PlayGeneratorCfg const& cfg)
+	{
+		auto pGame = std::make_shared<GomokuGame>(15, 5);
+		std::vector<TrainingExample> exampleSet(MAX_EXAMPLE_SIZE);
+		int exampleSize = 0;
+		srand((unsigned int)time(NULL) + cfg.seed);
+
+		for (int i = 0; i < cfg.gameCount; i++)
+		{
+			int lastMove = -1;
+			int currentGameStart = exampleSize;
+			if (cfg.startMove >= 0)
+			{
+				pGame->PlayMove(cfg.startMove);
+				lastMove = cfg.startMove;
+			}
+			else
+			{
+				short initialMoves = cfg.bRandStart ? rand() % 10 + 1 : 0;
+				for (int j = 0; j < initialMoves; j++)
 				{
-					delete[] moveValues;
-					myFile.close();
-					std::cout << "RENJU API ERROR!";
+					int size = 0;
+					int* const pLegalMoves = pGame->GetLegalMoves(size);
+					int initialMove = pLegalMoves[rand() % (size)];
+					pGame->PlayMove(initialMove);
+					lastMove = initialMove;
+				}
+			}
+			
+			bool bFirst = true;
+
+			while (pGame->GetGameWinState() == WinnerState_enum::None)
+			{
+				bool bSave = true;
+				bool bTurn = pGame->GetPlayerTurn();
+				if (bFirst && cfg.bRandStart && cfg.startMove == -2)
+					bSave = false; 
+				else if (bTurn)
+					bSave = bSave & cfg.bSavePlayer1;
+				else
+					bSave = bSave & cfg.bSavePlayer2;
+
+				memcpy(exampleSet[exampleSize].board, pGame->GetBoard(), 225);
+
+				int move, moveToSave;
+				if (bTurn)
+					move = cfg.pPlayer1->MakeMove(pGame, bTurn, moveToSave);
+				else
+					move = cfg.pPlayer2->MakeMove(pGame, bTurn, moveToSave);
+
+				exampleSet[exampleSize].moveMade = moveToSave;
+				exampleSet[exampleSize].boardValue = 0.0;
+
+				if (move < 0 || move > pGame->GetSideLength() * pGame->GetSideLength())
+				{
+					std::cout << "ERROR move out of bounds";
 					exit(10);
 				}
 
-				unsigned char max_score = moveValues[ConvertToIndex(move_r, move_c, boardSide)];
-				if (max_score == 0)
+				if (cfg.bRandMoves && (rand() % 4) == 0)
 				{
-					moveValues[ConvertToIndex(move_r, move_c, boardSide)] = 1;
-					max_score = 1;
+					int size = 0;
+					int* const pLegalMoves = pGame->GetLegalMoves(size);
+					int randomMove = pLegalMoves[rand() % (size)];
+					pGame->PlayMove(randomMove);
+					cfg.pPlayer1->MoveMadeInGame(randomMove);
+					cfg.pPlayer2->MoveMadeInGame(randomMove);
+
+					exampleSet[exampleSize].lastMove = lastMove;
+					lastMove = randomMove;
 				}
-				myFile.write(reinterpret_cast<const char *>(&max_score), sizeof(unsigned char));
-				myFile << std::endl;
-
-				myFile.write(moveValues, boardSide * boardSide);
-				myFile << std::endl;
-
-				double stateVal = RenjuAIEval::evalState(game.GetBoard(), player + 1) >> 1;
-				if (stateVal < 0)
-					stateVal = 0.0;
-
-				stateVal = log(stateVal) / log(10000);
-				if (stateVal > 1)
-					stateVal = 1.0;
-				else if (stateVal < 0)
-					stateVal = 0.0;
-
-				myFile << std::to_string(stateVal) << std::endl;
-
-				if (move_r > boardSide || move_c > boardSide)
+				else
 				{
-					std::cout << "ERROR move too big";
-					delete[] moveValues;
-					myFile.close();
-					exit(10);
+					pGame->PlayMove(move);
+					cfg.pPlayer1->MoveMadeInGame(move);
+					cfg.pPlayer2->MoveMadeInGame(move);
+
+					exampleSet[exampleSize].lastMove = lastMove;
+					lastMove = exampleSet[exampleSize].moveMade;
 				}
-				int moveIndex = ConvertToIndex(move_r, move_c, boardSide);
 
-				game.PlayMove(moveIndex);
-				player = (player + 1) % 2;
+				if (bSave && exampleSize < MAX_EXAMPLE_SIZE - 1)
+					++exampleSize;
 
-				myFile.write(reinterpret_cast<const char *>(&lastMove), sizeof(int));
-				myFile << std::endl;
-
-				lastMove = moveIndex;
-
-				delete[] moveValues;
+				bFirst = false;
 			}
-			std::cout << i << std::endl;
-			game.ResetBoard();
+
+			float maxboardValue = 0.0;
+			switch (pGame->GetGameWinState())
+			{
+			case WinnerState_enum::P1:
+				maxboardValue = 1.0 * 9;
+				break;
+			case WinnerState_enum::P2:
+				maxboardValue = -1.0 * 10;
+				break;
+			default:
+				break;
+			}
+
+			float boardValue = maxboardValue / pGame->GetMovesPlayed();
+			float boardValueIncrease = (maxboardValue / abs(maxboardValue) - boardValue) / (pGame->GetMovesPlayed() - 1);
+
+			for (int j = currentGameStart; j < exampleSize; j++)
+			{
+				exampleSet[j].boardValue = boardValue;
+				boardValue += boardValueIncrease;
+			}
+
+			if (exampleSize == MAX_EXAMPLE_SIZE - 1)
+				exampleSize++;
+
+			if (exampleSize == MAX_EXAMPLE_SIZE)
+				break;
+
+			if (cfg.bPrint)
+				DrawMatrix(pGame->GetBoard(), pGame->GetSideLength());
+
+			pGame->ResetBoard();
 		}
 
-		myFile.close();
+		exampleSet.resize(exampleSize);
+		return exampleSet;
 	}
 
-	void GenerateValueSet(short boardSide)
+	void WriteExampleSetToFile_(std::vector<TrainingExample> exampleSet, short fileNameNum)
 	{
-		std::vector<std::thread> threads;
-		threads.reserve(15);
-		for (int i = 1; i < 16; i++)
+		std::string fileName = "valueDataset" + std::to_string(fileNameNum) + ".bin";
+		std::ofstream exampleFile;
+		exampleFile.open(fileName, std::ofstream::binary);
+
+		for (int i = 0; i < exampleSet.size(); i++)
 		{
-			auto thread = std::thread(GenerateValueSetAsync_, boardSide, i);
-			threads.push_back(std::move(thread));
+			TrainingExample const& test = exampleSet[i];
+			exampleFile.write((char*)&test, sizeof(TrainingExample));
+		}
+	}
+
+	std::vector<TrainingExample> GetExampleSetFromFile_(short fileNameNum)
+	{
+		std::string fileName = "valueDataset" + std::to_string(fileNameNum) + ".bin";
+		std::vector<TrainingExample> returnVect;
+		std::ifstream exampleFile(fileName, std::ifstream::binary);
+
+		returnVect.reserve(MAX_EXAMPLE_SIZE);
+		for (int i = 0; i < MAX_EXAMPLE_SIZE; i++)
+		{
+			TrainingExample temp;
+			exampleFile.read((char*)&temp, sizeof(TrainingExample));
+			if (exampleFile.eof() || !exampleFile.good())
+				break;
+
+			returnVect.push_back(temp);
 		}
 
-		GenerateValueSetAsync_(boardSide, 0);
+		return returnVect;
+	}
 
-		for (int i = 0; i < threads.size(); i++)
+	bool GetAllExampleSets_(std::vector<TrainingExample>& outputVector)
+	{
+		short i = 0;
+		std::string fileName = "valueDataset" + std::to_string(i) + ".bin";
+		std::ifstream exampleFile(fileName, std::ifstream::binary);
+		std::vector<std::future<std::vector<TrainingExample>>> pPromises;
+		
+		while(exampleFile.good())
 		{
-			threads[i].join();
+			pPromises.push_back(std::async(&GetExampleSetFromFile_, i));
+			++i;
+			exampleFile.close();
+			fileName = "valueDataset" + std::to_string(i) + ".bin";
+			exampleFile = std::ifstream(fileName, std::ifstream::binary);
 		}
+
+		if (i == 0)
+			return false;
+
+		for (int i = 0; i < pPromises.size(); i++)
+		{
+			std::vector<TrainingExample> subExampleSet = pPromises[i].get();
+			outputVector.insert(outputVector.end(), subExampleSet.begin(), subExampleSet.end());
+		}
+
+		return true;
 	}
 }
