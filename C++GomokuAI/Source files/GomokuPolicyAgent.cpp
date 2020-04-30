@@ -38,11 +38,11 @@ Net::Net()
 
 	policyN1 = register_module("policyN1", torch::nn::Conv2d(256, 4, 1));
 	batchNorm2 = register_module("batchNorm2", torch::nn::BatchNorm2d(torch::nn::BatchNormOptions(4)));
-	policyN2 = register_module("policyN2", torch::nn::Linear(4 * 15 * 15, BOARD_SIDE*BOARD_SIDE));
+	policyN2 = register_module("policyN2", torch::nn::Linear(4 * BOARD_SIDE * BOARD_SIDE, BOARD_SIDE*BOARD_SIDE));
 
 	valueN1 = register_module("valueN1", torch::nn::Conv2d(256, 2, 1));
 	batchNorm3 = register_module("batchNorm3", torch::nn::BatchNorm2d(torch::nn::BatchNormOptions(2)));
-	valueN2 = register_module("valueN2", torch::nn::Linear(2 * 15 * 15, 64));
+	valueN2 = register_module("valueN2", torch::nn::Linear(2 * BOARD_SIDE * BOARD_SIDE, 64));
 	valueN3 = register_module("valueN3", torch::nn::Linear(64, 1));
 }
 
@@ -65,7 +65,7 @@ torch::Tensor Net::forwadPolicy(torch::Tensor x)
 	}
 
 	x = torch::relu(batchNorm2->forward(policyN1->forward(x)));
-	return torch::log_softmax(policyN2->forward(x.reshape({ x.sizes()[0], 4 * 15 * 15 })), 1);
+	return torch::log_softmax(policyN2->forward(x.reshape({ x.sizes()[0], 4 * BOARD_SIDE * BOARD_SIDE })), 1);
 }
 
 torch::Tensor Net::forwadValue(torch::Tensor x)
@@ -81,7 +81,7 @@ torch::Tensor Net::forwadValue(torch::Tensor x)
 	}
 
 	x = torch::relu(batchNorm3->forward(valueN1->forward(x)));
-	x = torch::relu(valueN2->forward(x.reshape({ x.sizes()[0], 2 * 15 * 15 })));
+	x = torch::relu(valueN2->forward(x.reshape({ x.sizes()[0], 2 * BOARD_SIDE * BOARD_SIDE })));
 	return torch::tanh(valueN3->forward(x));
 }
 
@@ -98,10 +98,10 @@ void Net::forwardBoth(torch::Tensor x, torch::Tensor& policy, torch::Tensor& val
 	}
 
 	policy = torch::relu(batchNorm2->forward(policyN1->forward(x)));
-	policy = torch::log_softmax(policyN2->forward(policy.reshape({ policy.sizes()[0], 4 * 15 * 15 })), 1);
+	policy = torch::log_softmax(policyN2->forward(policy.reshape({ policy.sizes()[0], 4 * BOARD_SIDE * BOARD_SIDE })), 1);
 
 	value = torch::relu(batchNorm3->forward(valueN1->forward(x)));
-	value = torch::relu(valueN2->forward(value.reshape({ value.sizes()[0], 2 * 15 * 15 })));
+	value = torch::relu(valueN2->forward(value.reshape({ value.sizes()[0], 2 * BOARD_SIDE * BOARD_SIDE })));
 	value = torch::tanh(valueN3->forward(value));
 }
 
@@ -253,6 +253,11 @@ void GomokuPolicyAgent::Train(std::vector<TrainingExample>& trainingExamples, do
 		promise.get();
 	}
 	m_pNetworkGpu->eval();
+}
+
+std::string const& GomokuPolicyAgent::GetModelPath() const
+{
+	return m_modelPath;
 }
 
 /*--------------------------------------------------------------*/

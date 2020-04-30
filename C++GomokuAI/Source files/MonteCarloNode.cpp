@@ -126,22 +126,25 @@ namespace MonteCarlo
 	int MonteCarloNode::Select(bool playerToCheck, short c_puct)
 	{
 		int index = -1;
+		int offset = m_gameSpace / 3;
 		double maxValue = playerToCheck ? -500 : DBL_MAX;
 		for (int i = 0; i < m_gameSpace; i++)
 		{
-			if (m_ppChildren[i] == nullptr)
+			int indexToTest = (i + offset) % m_gameSpace;
+
+			if (m_ppChildren[indexToTest] == nullptr)
 				continue;
 
 			if (index == -1)
-				index = i;
+				index = indexToTest;
 			
-			double value = m_ppChildren[i]->GetValue(c_puct, playerToCheck);
+			double value = m_ppChildren[indexToTest]->GetValue(c_puct, playerToCheck);
 			if (playerToCheck)
 			{
 				if (value > maxValue)
 				{
 					maxValue = value;
-					index = i;
+					index = indexToTest;
 				}
 			}
 			else
@@ -149,7 +152,7 @@ namespace MonteCarlo
 				if (value < maxValue)
 				{
 					maxValue = value;
-					index = i;
+					index = indexToTest;
 				}
 			}
 		}
@@ -180,10 +183,12 @@ namespace MonteCarlo
 	void MonteCarloNode::SelectBestFour(bool playerToCheck, int* indicies, short c_puct )
 	{
 		float maxValue = playerToCheck ? -500 : DBL_MAX;
-		indicies[0] = 0;
-		indicies[1] = 0;
-		indicies[2] = 0;
-		indicies[3] = 0;
+		indicies[0] = -1;
+		indicies[1] = -1;
+		indicies[2] = -1;
+		indicies[3] = -1;
+
+		int offset = m_gameSpace / 3;
 
 		int* pIndex1 = indicies;
 		int* pIndex2 = &indicies[1];
@@ -192,7 +197,7 @@ namespace MonteCarlo
 		int itemPushed = 0;
 		for (int i = 0; i < m_gameSpace; i++)
 		{
-			int indexToTest = (i + 80) % m_gameSpace;
+			int indexToTest = (i + offset) % m_gameSpace;
 			if (m_ppChildren[indexToTest] == nullptr)
 				continue;
 

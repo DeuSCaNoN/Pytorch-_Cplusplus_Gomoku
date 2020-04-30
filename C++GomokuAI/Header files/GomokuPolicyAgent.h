@@ -5,7 +5,8 @@
 #include <vector>
 #include <string>
 
-#define BOARD_SIDE 15
+#define BOARD_SIDE 9
+#define BOARD_WIN 5
 
 struct TrainingExample
 {
@@ -44,7 +45,7 @@ struct Net : torch::nn::Module {
 class GomokuPolicyAgent
 {
 public:
-	GomokuPolicyAgent(std::string const& modelPath = "GomokuModel.pt");
+	GomokuPolicyAgent(std::string const& modelPath = "GomokuModel" + std::to_string(BOARD_SIDE) + "_" + std::to_string(BOARD_WIN) + ".pt");
 
 	~GomokuPolicyAgent();
 
@@ -55,6 +56,8 @@ public:
 	double PredictValue(char* board, int size, int lastMoveIndex, bool bTurn);
 
 	torch::Tensor PredictMove(char* board, int size, int lastMoveIndex, bool bTurn);
+
+	std::string const& GetModelPath() const;
 private:
 
 	torch::Tensor CreateTensorBoard_(char* board, int size, int lastMoveIndex, bool bTurn);

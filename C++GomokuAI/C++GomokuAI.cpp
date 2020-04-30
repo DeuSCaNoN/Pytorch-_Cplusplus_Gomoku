@@ -11,9 +11,9 @@
 
 int main()
 {
-	GomokuUtils::TrainBluPig();
+	GomokuUtils::TrainSelfPlay();
 
-	short boardSize = 15;
+/*	short boardSize = 15;
 	short win = 5;
 
 	std::shared_ptr<GomokuPolicyAgent> pAgent = std::make_shared<GomokuPolicyAgent>();
@@ -22,7 +22,7 @@ int main()
 	GomokuGame game = GomokuGame(boardSize, win);
 	game.PlayMove(112);
 	game.PlayMove(0);
-/*	while (game.GetGameWinState() == WinnerState_enum::None)
+	while (game.GetGameWinState() == WinnerState_enum::None)
 	{
 		int index = treeSearch.GetMove(game);
 		system("CLS");
@@ -35,9 +35,9 @@ int main()
 		GomokuUtils::DrawMatrix(game.GetBoard(), boardSize);
 		treeSearch.StepInTree(index);
 	}
-*/
-	std::cout << pAgent->PredictValue(game.GetBoard(), 225, 0, true);
 
+	std::cout << pAgent->PredictValue(game.GetBoard(), 225, 0, true);
+*/
 	return 0;
 
 }

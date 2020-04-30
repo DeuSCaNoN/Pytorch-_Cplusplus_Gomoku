@@ -91,27 +91,22 @@ namespace MonteCarlo
 		if (m_pRoot->GetChildrenCount() > 0)
 		{
 			int rootVisists = m_pRoot->GetVisits();
-			short branchPaths = 1; //m_pRoot->GetChildrenCount() >= 4 ? 4 : m_pRoot->GetChildrenCount();
-			int* values = new int[1]; // new int[branchPaths];
-			values[0] = m_pRoot->Select(game.GetPlayerTurn()); // m_pRoot->SelectBestFour(game.GetPlayerTurn(), values);
+			int* values = new int[4];
+			m_pRoot->SelectBestFour(game.GetPlayerTurn(), values);
 			std::function<void(GomokuGame&, MonteCarloNode*)> playoutFn = std::bind(&MonteCarloTreeSearch::AgentPlayoutAsync_, this, std::placeholders::_1, std::placeholders::_2);
 			
 			std::vector<std::thread> threads;
-			threads.reserve(branchPaths-1);
-			for (int i = 0; i < branchPaths - 1; i++)
+			threads.reserve(4);
+			for (int i = 0; i < 4; i++)
 			{
+				if (values[i] == -1)
+					continue;
 				MonteCarloNode* pNode = m_pRoot->GetChildren()[values[i]];
 				_ASSERT(pNode != nullptr);
 				GomokuGame gameCopy(game);
 				gameCopy.PlayMove(values[i]);
 				threads.push_back(std::thread(playoutFn, gameCopy, pNode));
 			}
-
-
-			MonteCarloNode* pNode3 = m_pRoot->GetChildren()[values[0]]; // 3]];
-			_ASSERT(pNode3 != nullptr);
-			game.PlayMove(values[0]); //3]);
-			AgentPlayoutAsync_(game, pNode3);
 
 			for (int i = 0; i < threads.size(); ++i)
 			{
@@ -131,6 +126,8 @@ namespace MonteCarlo
 
 	void MonteCarloTreeSearch::AgentPlayoutAsync_(GomokuGame& game, MonteCarloNode* pNode)
 	{
+		if (!pNode)
+			return;
 		bool playerToSearch = game.GetPlayerTurn();
 		while (pNode->GetChildrenCount() > 0)
 		{

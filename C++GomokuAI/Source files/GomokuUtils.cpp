@@ -27,7 +27,7 @@ namespace GomokuUtils
 
 	bool GetAllExampleSets_(std::vector<TrainingExample>& outputVector);
 
-	std::vector<TrainingExample> GenerateExamplesFromPlay_(PlayGeneratorCfg const& cfg);
+	std::vector<TrainingExample> GenerateExamplesFromPlay_(PlayGeneratorCfg const& cfg, std::shared_ptr<GomokuGame> pGame);
 
 	void ConvertToRowCol(
 		int index,
@@ -91,12 +91,14 @@ namespace GomokuUtils
 
 			for (unsigned short i = 1; i < concurentThreadsSupported; i++)
 			{
+				auto pGame = std::make_shared<GomokuGame>(BOARD_SIDE, BOARD_WIN);
 				PlayGeneratorCfg cfg({i, 500, true, true, true, true, pBluPigPlayer, pBluPigPlayer, false, -1 });
-				pPromises.push_back(std::async(&GenerateExamplesFromPlay_, cfg));
+				pPromises.push_back(std::async(&GenerateExamplesFromPlay_, cfg, pGame));
 			}
 
+			auto pGame = std::make_shared<GomokuGame>(BOARD_SIDE, BOARD_WIN);
 			PlayGeneratorCfg cfg({ 0,500, true, true, true, true, pBluPigPlayer, pBluPigPlayer, false, -1 });
-			exampleSet = GenerateExamplesFromPlay_(cfg);
+			exampleSet = GenerateExamplesFromPlay_(cfg, pGame);
 			WriteExampleSetToFile_(exampleSet, 15);
 
 			std::vector<std::thread> threads;
@@ -129,8 +131,6 @@ namespace GomokuUtils
 		std::shared_ptr<GomokuPolicyAgent> pAgent = std::make_shared<GomokuPolicyAgent>();
 		auto pBluPigPlayer = std::make_shared<Player::BluPigPlayer>();
 		std::vector<TrainingExample> exampleSet;
-
-		Evaluate();
 		
 		while (true)
 		{
@@ -138,16 +138,19 @@ namespace GomokuUtils
 			std::future<std::vector<TrainingExample>> promise1;
 			std::future<std::vector<TrainingExample>> promise2;
 
-			auto pAgentPlayer = std::make_shared<Player::AgentPlayer>(pAgent, 1200);
+			auto pAgentPlayer = std::make_shared<Player::AgentPlayer>(pAgent, 200);
 			PlayGeneratorCfg cfg({ 0, 1, true, false, true, true, pBluPigPlayer, pAgentPlayer, true, -2 });
-			promise1 = std::async(&GenerateExamplesFromPlay_, cfg);
+			auto pGame1 = std::make_shared<GomokuGame>(BOARD_SIDE, BOARD_WIN);
+			promise1 = std::async(&GenerateExamplesFromPlay_, cfg, pGame1);
 
-			auto pAgentPlayer2 = std::make_shared<Player::AgentPlayer>(pAgent, 1200);
+			auto pAgentPlayer2 = std::make_shared<Player::AgentPlayer>(pAgent, 200);
 			PlayGeneratorCfg cfg2({ 0, 1, true, false, true, true, pAgentPlayer2, pBluPigPlayer, true, -2 });
-			promise2 = std::async(&GenerateExamplesFromPlay_, cfg2);
+			auto pGame2 = std::make_shared<GomokuGame>(BOARD_SIDE, BOARD_WIN);
+			promise2 = std::async(&GenerateExamplesFromPlay_, cfg2, pGame2);
 
+			auto pGame3 = std::make_shared<GomokuGame>(BOARD_SIDE, BOARD_WIN);
 			PlayGeneratorCfg cfg3({ 0, 1, true, false, true, true, pBluPigPlayer, pBluPigPlayer, true, -1 });
-			exampleSet = GenerateExamplesFromPlay_(cfg3);
+			exampleSet = GenerateExamplesFromPlay_(cfg3, pGame3);
 
 			std::vector<TrainingExample> subExampleSet = promise1.get();
 			exampleSet.insert(exampleSet.end(), subExampleSet.begin(), subExampleSet.end());
@@ -166,8 +169,9 @@ namespace GomokuUtils
 		std::vector<TrainingExample> exampleSet;
 
 		unsigned supportedGames = std::thread::hardware_concurrency() / 4;
-		std::vector<int> startMove = { 112,96,113,97,126,98,114,127 };
-
+		int gameSpace = BOARD_SIDE * BOARD_SIDE;
+		std::vector<int> startMove = { gameSpace / 2, gameSpace / 4, gameSpace*3/4, gameSpace / 4 + 4 };
+		short trainingCount = 0;
 		while (true)
 		{
 			exampleSet.clear();
@@ -176,9 +180,10 @@ namespace GomokuUtils
 
 			for (unsigned short i = 0; i < supportedGames; i++)
 			{
+				auto pGame = std::make_shared<GomokuGame>(BOARD_SIDE, BOARD_WIN);
 				auto pAgentPlayer = std::make_shared<Player::AgentPlayer>(pAgent, 200);
 				PlayGeneratorCfg cfg({ i, 1, true, false, true, true, pAgentPlayer, pAgentPlayer, true, startMove[i] });
-				pPromises.push_back(std::async(&GenerateExamplesFromPlay_, cfg));
+				pPromises.push_back(std::async(&GenerateExamplesFromPlay_, cfg, pGame));
 			}
 
 			for (int i = 0; i < pPromises.size(); i++)
@@ -187,8 +192,19 @@ namespace GomokuUtils
 				exampleSet.insert(exampleSet.end(), subExampleSet.begin(), subExampleSet.end());
 			}
 
-			pAgent->Train(exampleSet, 0.002, 10);
+			pAgent->Train(exampleSet, 0.002, 7);
 			pAgent->SaveModel();
+
+			trainingCount++;
+			if (trainingCount == 50)
+			{
+				Evaluate();
+				trainingCount = 0;
+				std::ifstream src(pAgent->GetModelPath(), std::ios::binary);
+				std::ofstream dst("GomokuModel_Old.pt", std::ios::binary);
+
+				dst << src.rdbuf();
+			}
 		}
 	}
 
@@ -199,11 +215,12 @@ namespace GomokuUtils
 		std::shared_ptr<GomokuPolicyAgent> pAgentOld = std::make_shared<GomokuPolicyAgent>("GomokuModel_Old.pt");
 
 		std::future<std::vector<TrainingExample>> game1Promise;
-		auto pAgentPlayer = std::make_shared<Player::AgentPlayer>(pAgent, 1200);
-		auto pAgentPlayerOld = std::make_shared<Player::AgentPlayer>(pAgentOld, 1200);
+		auto pAgentPlayer = std::make_shared<Player::AgentPlayer>(pAgent, 200);
+		auto pAgentPlayerOld = std::make_shared<Player::AgentPlayer>(pAgentOld, 200);
 
+		auto pGame = std::make_shared<GomokuGame>(BOARD_SIDE, BOARD_WIN);
 		PlayGeneratorCfg cfg({ 0, 1, false, false, true, true, pAgentPlayer, pAgentPlayerOld, true, -1 });
-		std::vector<TrainingExample> subExampleSet = GenerateExamplesFromPlay_(cfg);
+		std::vector<TrainingExample> subExampleSet = GenerateExamplesFromPlay_(cfg, pGame);
 
 		short winAmount = 0;
 		if (subExampleSet.size() > 1)
@@ -218,8 +235,9 @@ namespace GomokuUtils
 		pAgentPlayer->ClearTree();
 		pAgentPlayerOld->ClearTree();
 
+		auto pGame2 = std::make_shared<GomokuGame>(BOARD_SIDE, BOARD_WIN);
 		PlayGeneratorCfg cfg2({ 0, 1, false, false, true, false, pAgentPlayerOld, pAgentPlayer, true, -1 });
-		subExampleSet = GenerateExamplesFromPlay_(cfg);
+		subExampleSet = GenerateExamplesFromPlay_(cfg2, pGame2);
 
 		if (subExampleSet.size() > 1)
 		{
@@ -236,9 +254,9 @@ namespace GomokuUtils
 
 	/*------------------------------------------------------------------------------------------------*/
 
-	std::vector<TrainingExample> GenerateExamplesFromPlay_(PlayGeneratorCfg const& cfg)
+	std::vector<TrainingExample> GenerateExamplesFromPlay_(PlayGeneratorCfg const& cfg, std::shared_ptr<GomokuGame> pGame)
 	{
-		auto pGame = std::make_shared<GomokuGame>(15, 5);
+		int gameSpace = pGame->GetSideLength() * pGame->GetSideLength();
 		std::vector<TrainingExample> exampleSet(MAX_EXAMPLE_SIZE);
 		int exampleSize = 0;
 		srand((unsigned int)time(NULL) + cfg.seed);
@@ -278,7 +296,7 @@ namespace GomokuUtils
 				else
 					bSave = bSave & cfg.bSavePlayer2;
 
-				memcpy(exampleSet[exampleSize].board, pGame->GetBoard(), 225);
+				memcpy(exampleSet[exampleSize].board, pGame->GetBoard(), gameSpace);
 
 				int move, moveToSave;
 				if (bTurn)
@@ -323,26 +341,23 @@ namespace GomokuUtils
 				bFirst = false;
 			}
 
-			float maxboardValue = 0.0;
+			float boardValue = 0.0;
 			switch (pGame->GetGameWinState())
 			{
 			case WinnerState_enum::P1:
-				maxboardValue = 1.0 * 9;
+				boardValue = 1.0 * 9;
 				break;
 			case WinnerState_enum::P2:
-				maxboardValue = -1.0 * 10;
+				boardValue = -1.0 * 10;
 				break;
 			default:
 				break;
 			}
 
-			float boardValue = maxboardValue / pGame->GetMovesPlayed();
-			float boardValueIncrease = (maxboardValue / abs(maxboardValue) - boardValue) / (pGame->GetMovesPlayed() - 1);
-
+			boardValue = boardValue / pGame->GetMovesPlayed();
 			for (int j = currentGameStart; j < exampleSize; j++)
 			{
 				exampleSet[j].boardValue = boardValue;
-				boardValue += boardValueIncrease;
 			}
 
 			if (exampleSize == MAX_EXAMPLE_SIZE - 1)
