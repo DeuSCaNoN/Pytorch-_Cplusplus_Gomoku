@@ -2,19 +2,20 @@
 
 #include <BluPigPlayer.h>
 #include <GomokuUtils.h>
+#include <FwdDecl.h>
 
 #include <api/renju_api.h>
-#include <ai/eval.h>
 
 #include <iostream>
 
 namespace Player
 {
-	int BluPigPlayer::MakeMove(std::shared_ptr<GomokuGame> pGame, bool bTurn, int& moveToSave)
+	int BluPigPlayer::MakeMove(std::shared_ptr<GomokuGame> pGame, bool bTurn, float* pMoveEstimates)
 	{
+		memset(pMoveEstimates, 0, BOARD_LENGTH);
 		if (pGame->GetMovesPlayed() == 0)
 		{
-			moveToSave = 112;
+			pMoveEstimates[112] = 1.0f;
 			return 112;
 		}
 		int player = bTurn ? 1 : 2;
@@ -30,7 +31,8 @@ namespace Player
 			exit(10);
 		}
 
-		moveToSave = ConvertToIndex(move_r, move_c, 15);
-		return moveToSave;
+		int moveMade = ConvertToIndex(move_r, move_c, 15);
+		pMoveEstimates[moveMade] = 1.0f;
+		return moveMade;
 	}
 }

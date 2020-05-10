@@ -116,7 +116,7 @@
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>J:\AITicTacToe\libtorchDebug\lib;C:\Users\Oscar\AppData\Local\Programs\Python\Python36\libs;C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v10.1\lib\x64</AdditionalLibraryDirectories>
-      <AdditionalDependencies>torch.lib;c10.lib;c10_cuda.lib;caffe2_nvrtc.lib;caffe2_module_test_dynamic.lib;clog.lib;cpuinfo.lib;libprotobufd.lib;libprotobuf-lited.lib;libprotocd.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>asmjit.lib;c10.lib;c10_cuda.lib;caffe2_detectron_ops_gpu;caffe2_nvrtc.lib;caffe2_module_test_dynamic.lib;clog.lib;cpuinfo.lib;fbgemm.lib;libprotobufd.lib;libprotobuf-lited.lib;libprotocd.lib;mkldnn.lib;torch.lib;torch_cpu.lib;torch_cuda.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <ProjectReference>
       <UseLibraryDependencyInputs>true</UseLibraryDependencyInputs>
@@ -162,7 +162,7 @@
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>J:\AITicTacToe\libtorch\lib;C:\Users\Oscar\AppData\Local\Programs\Python\Python36\libs;C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v10.1\lib\x64</AdditionalLibraryDirectories>
-      <AdditionalDependencies>torch.lib;c10.lib;c10_cuda.lib;caffe2_nvrtc.lib;caffe2_module_test_dynamic.lib;clog.lib;cpuinfo.lib;libprotobuf.lib;libprotobuf-lite.lib;libprotoc.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>asmjit.lib;c10.lib;c10_cuda.lib;caffe2_detectron_ops_gpu.lib;caffe2_nvrtc.lib;caffe2_module_test_dynamic.lib;clog.lib;cpuinfo.lib;fbgemm.lib;libprotobuf.lib;libprotobuf-lite.lib;libprotoc.lib;mkldnn.lib;torch.lib;torch_cpu.lib;torch_cuda.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <ProjectReference>
       <UseLibraryDependencyInputs>true</UseLibraryDependencyInputs>
@@ -175,6 +175,7 @@
     <ClInclude Include="Header files\ai\utils.h" />
     <ClInclude Include="Header files\api\renju_api.h" />
     <ClInclude Include="Header files\BluPigPlayer.h" />
+    <ClInclude Include="Header files\FwdDecl.h" />
     <ClInclude Include="Header files\GomokuPolicyAgent.h" />
     <ClInclude Include="Header files\AgentPlayer.h" />
     <ClInclude Include="Header files\IPlayer.h" />

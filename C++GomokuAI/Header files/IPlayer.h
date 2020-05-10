@@ -10,7 +10,7 @@ namespace Player
 	public:
 		virtual ~IPlayer() = default;
 
-		virtual int MakeMove(std::shared_ptr<GomokuGame> pGame, bool bTurn, int& moveToSave) = 0;
+		virtual int MakeMove(std::shared_ptr<GomokuGame> pGame, bool bTurn, float* moveEstimates) = 0;
 
 		virtual void MoveMadeInGame(int moveIndex) = 0;
 	};

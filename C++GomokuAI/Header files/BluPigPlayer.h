@@ -9,7 +9,7 @@ namespace Player
 	public:
 		virtual ~BluPigPlayer() {};
 
-		int MakeMove(std::shared_ptr<GomokuGame> pGame, bool bTurn, int& moveToSave);
+		int MakeMove(std::shared_ptr<GomokuGame> pGame, bool bTurn, float* moveEstimates);
 
 		void MoveMadeInGame(int /*moveIndex*/) {}
 	};

@@ -1,9 +1,10 @@
 #include "pch.h"
 
-#include <MonteCarloNode.h>
-
 #include <AgentPlayer.h>
-#include <GomokuUtils.h>
+
+#include <MonteCarloTreeSearch.h>
+#include <MonteCarloNode.h>
+#include <GomokuGame.h>
 
 namespace Player
 {
@@ -11,13 +12,24 @@ namespace Player
 		: m_lastMoveMade(-1)
 	{
 		m_pAgent = pAgent;
-		m_pTreeSearch = std::make_shared<MonteCarlo::MonteCarloTreeSearch>(BOARD_SIDE*BOARD_SIDE, m_pAgent, rollouts);
+		m_pTreeSearch = std::make_shared<MonteCarlo::MonteCarloTreeSearch>(BOARD_LENGTH, m_pAgent, rollouts);
 	}
 
-	int AgentPlayer::MakeMove(std::shared_ptr<GomokuGame> pGame, bool /*bTurn*/, int& moveToSave)
+	int AgentPlayer::MakeMove(std::shared_ptr<GomokuGame> pGame, bool bTurn, float* pMoveEstimates)
 	{
-		moveToSave = m_pTreeSearch->GetMove(*pGame);
-		return moveToSave;
+		memset(pMoveEstimates, 0, BOARD_LENGTH);
+		int move = m_pTreeSearch->GetMove(*pGame);
+
+		MonteCarlo::MonteCarloNode** ppChildren = m_pTreeSearch->GetRoot()->GetChildren();
+		for (int i = 0; i < BOARD_LENGTH; i++)
+		{
+			if (ppChildren[i] != nullptr)
+			{
+				pMoveEstimates[i] = (float)ppChildren[i]->GetVisits() / m_pTreeSearch->GetRoot()->GetVisits();
+			}
+		}
+		
+		return move;
 	}
 
 	void AgentPlayer::MoveMadeInGame(int moveIndex)

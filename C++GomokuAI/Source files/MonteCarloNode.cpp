@@ -1,6 +1,7 @@
 #include "pch.h"
-#include "MonteCarloNode.h"
+#include <MonteCarloNode.h>
 
+#include <torch/torch.h>
 #include <math.h>
 #include <limits>
 namespace MonteCarlo

@@ -149,5 +149,8 @@
     <ClInclude Include="Header files\AgentPlayer.h">
       <Filter>Header Files\Players</Filter>
     </ClInclude>
+    <ClInclude Include="Header files\FwdDecl.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

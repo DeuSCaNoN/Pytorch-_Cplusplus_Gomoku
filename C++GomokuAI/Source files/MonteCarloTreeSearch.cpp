@@ -2,6 +2,9 @@
 #include "MonteCarloTreeSearch.h"
 #include "GomokuUtils.h"
 
+#include "MonteCarloNode.h"
+#include "GomokuGame.h"
+
 #include "torch/torch.h"
 
 #include <stdlib.h>
@@ -90,7 +93,12 @@ namespace MonteCarlo
 	{
 		if (m_pRoot->GetChildrenCount() > 0)
 		{
-			int rootVisists = m_pRoot->GetVisits();
+			int move = m_pRoot->Select(game.GetPlayerTurn());
+			MonteCarloNode* pNode = m_pRoot->GetChildren()[move];
+			_ASSERT(pNode != nullptr);
+			game.PlayMove(move);
+			AgentPlayoutAsync_(game, pNode);
+/*			int rootVisists = m_pRoot->GetVisits();
 			int* values = new int[4];
 			m_pRoot->SelectBestFour(game.GetPlayerTurn(), values);
 			std::function<void(GomokuGame&, MonteCarloNode*)> playoutFn = std::bind(&MonteCarloTreeSearch::AgentPlayoutAsync_, this, std::placeholders::_1, std::placeholders::_2);
@@ -116,6 +124,7 @@ namespace MonteCarlo
 			rootVisists += 1;
 			m_pRoot->SetVisits(rootVisists);
 			delete[] values;
+*/
 		}
 		else
 		{
@@ -128,7 +137,6 @@ namespace MonteCarlo
 	{
 		if (!pNode)
 			return;
-		bool playerToSearch = game.GetPlayerTurn();
 		while (pNode->GetChildrenCount() > 0)
 		{
 			int actionIndex = pNode->Select(game.GetPlayerTurn());
@@ -178,7 +186,7 @@ namespace MonteCarlo
 	void MonteCarloTreeSearch::DefaultPlayout_(GomokuGame& game)
 	{
 		MonteCarloNode* pNode = m_pRoot;
-		bool playerToSearch = game.GetPlayerTurn();
+
 		while (pNode->GetChildrenCount() > 0)
 		{
 			int actionIndex = pNode->Select(game.GetPlayerTurn());

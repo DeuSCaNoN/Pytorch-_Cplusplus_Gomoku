@@ -1,32 +1,31 @@
 #pragma once
 
 #include "torch/torch.h"
+#include <FwdDecl.h>
 
 #include <vector>
 #include <string>
 
-#define BOARD_SIDE 9
-#define BOARD_WIN 5
-
 struct TrainingExample
 {
-	char board[BOARD_SIDE*BOARD_SIDE];
-	int moveMade;
+	char board[BOARD_LENGTH];
+	float pMoveEstimate[BOARD_LENGTH];
 	float boardValue;
 	int lastMove;
 };
 
 // Define a new Module.
-struct Net : torch::nn::Module {
-	Net();
-
-	Net(short resNetSize);
+struct Net : torch::nn::Module
+{
+	Net(short resNetSize = 5);
 
 	torch::Tensor forwadPolicy(torch::Tensor x);
 
 	torch::Tensor forwadValue(torch::Tensor x);
 
 	void forwardBoth(torch::Tensor x, torch::Tensor& policy, torch::Tensor& value);
+
+	void train(bool on = true);
 
 	short m_residualNetSize;
 
@@ -40,6 +39,9 @@ struct Net : torch::nn::Module {
 	std::vector<torch::nn::Conv2d> m_residualConv2;
 
 	torch::nn::BatchNorm2d batchNorm1{nullptr}, batchNorm2{ nullptr }, batchNorm3{ nullptr };
+
+private:
+	void Ctor_();
 };
 
 class GomokuPolicyAgent
@@ -51,7 +53,7 @@ public:
 
 	void SaveModel();
 
-	void Train(std::vector<TrainingExample>& trainingExamples, double learningRate, short epochs);
+	void Train(std::vector<TrainingExample>& trainingExamples, double learningRate, unsigned int epoch = 10);
 
 	double PredictValue(char* board, int size, int lastMoveIndex, bool bTurn);
 
@@ -63,11 +65,10 @@ private:
 	torch::Tensor CreateTensorBoard_(char* board, int size, int lastMoveIndex, bool bTurn);
 
 	float TrainGpuAsync_(
-		torch::optim::Adam adamOptimizer,
+		torch::optim::Optimizer& adamOptimizer,
 		torch::Tensor inputTensor,
 		torch::Tensor valueAnswerTensor,
-		torch::Tensor policyAnswerTensor,
-		bool bVerbose);
+		torch::Tensor policyAnswerTensor);
 
 	std::shared_ptr<Net> m_pNetworkGpu;
 

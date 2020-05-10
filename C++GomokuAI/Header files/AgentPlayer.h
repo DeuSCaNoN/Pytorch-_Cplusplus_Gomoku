@@ -2,9 +2,8 @@
 #pragma once
 
 #include <IPlayer.h>
-
+#include <FwdDecl.h>
 #include <GomokuPolicyAgent.h>
-#include <MonteCarloTreeSearch.h>
 
 #include <memory>
 
@@ -17,7 +16,7 @@ namespace Player
 
 		virtual ~AgentPlayer() = default;
 
-		int MakeMove(std::shared_ptr<GomokuGame> pGame, bool bTurn, int& moveToSave);
+		int MakeMove(std::shared_ptr<GomokuGame> pGame, bool bTurn, float* moveEstimates);
 
 		void MoveMadeInGame(int moveIndex);
 

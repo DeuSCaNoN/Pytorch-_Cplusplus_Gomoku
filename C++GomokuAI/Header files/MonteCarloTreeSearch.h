@@ -1,6 +1,6 @@
 #pragma once
-#include "MonteCarloNode.h"
-#include "GomokuGame.h"
+
+#include <FwdDecl.h>
 #include "GomokuPolicyAgent.h"
 
 namespace MonteCarlo

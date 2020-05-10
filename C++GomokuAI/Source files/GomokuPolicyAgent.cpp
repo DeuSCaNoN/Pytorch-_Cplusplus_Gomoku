@@ -10,15 +10,15 @@
 
 #define BATCH_SIZE 64
 #define BATCH_VERBOSE_SIZE 3200 // BATCH_SIZE * 50
+#define CONV_2D_FILTER_SIZE 256
 
 /*--------------------------------------------------------------*/
 
-Net::Net()
+void Net::Ctor_()
 {
-	m_residualNetSize = 5;
 	// Construct and register two Linear submodules.
-	convN1 = register_module("convN1", torch::nn::Conv2d(torch::nn::Conv2dOptions(4, 256, 3).padding(1)));
-	batchNorm1 = register_module("batchNorm1", torch::nn::BatchNorm2d(torch::nn::BatchNormOptions(256)));
+	convN1 = register_module("convN1", torch::nn::Conv2d(torch::nn::Conv2dOptions(4, CONV_2D_FILTER_SIZE, 3).padding(1)));
+	batchNorm1 = register_module("batchNorm1", torch::nn::BatchNorm2d(torch::nn::BatchNormOptions(CONV_2D_FILTER_SIZE)));
 
 	m_residualBatch1.reserve(m_residualNetSize);
 	m_residualBatch2.reserve(m_residualNetSize);
@@ -30,26 +30,26 @@ Net::Net()
 		std::string batch2Name = "resNetBatch2" + std::to_string(i);
 		std::string conv1Name = "resNetConv1" + std::to_string(i);
 		std::string conv2Name = "resNetConv2" + std::to_string(i);
-		m_residualBatch1.push_back(register_module(batch1Name, torch::nn::BatchNorm2d(torch::nn::BatchNormOptions(256))));
-		m_residualBatch2.push_back(register_module(batch2Name, torch::nn::BatchNorm2d(torch::nn::BatchNormOptions(256))));
-		m_residualConv1.push_back(register_module(conv1Name, torch::nn::Conv2d(torch::nn::Conv2dOptions(256, 256, 3).padding(1))));
-		m_residualConv2.push_back(register_module(conv2Name, torch::nn::Conv2d(torch::nn::Conv2dOptions(256, 256, 3).padding(1))));
+		m_residualBatch1.push_back(register_module(batch1Name, torch::nn::BatchNorm2d(torch::nn::BatchNormOptions(CONV_2D_FILTER_SIZE))));
+		m_residualBatch2.push_back(register_module(batch2Name, torch::nn::BatchNorm2d(torch::nn::BatchNormOptions(CONV_2D_FILTER_SIZE))));
+		m_residualConv1.push_back(register_module(conv1Name, torch::nn::Conv2d(torch::nn::Conv2dOptions(CONV_2D_FILTER_SIZE, CONV_2D_FILTER_SIZE, 3).padding(1))));
+		m_residualConv2.push_back(register_module(conv2Name, torch::nn::Conv2d(torch::nn::Conv2dOptions(CONV_2D_FILTER_SIZE, CONV_2D_FILTER_SIZE, 3).padding(1))));
 	}
 
-	policyN1 = register_module("policyN1", torch::nn::Conv2d(256, 4, 1));
+	policyN1 = register_module("policyN1", torch::nn::Conv2d(CONV_2D_FILTER_SIZE, 4, 1));
 	batchNorm2 = register_module("batchNorm2", torch::nn::BatchNorm2d(torch::nn::BatchNormOptions(4)));
-	policyN2 = register_module("policyN2", torch::nn::Linear(4 * BOARD_SIDE * BOARD_SIDE, BOARD_SIDE*BOARD_SIDE));
+	policyN2 = register_module("policyN2", torch::nn::Linear(4 * BOARD_LENGTH, BOARD_LENGTH));
 
-	valueN1 = register_module("valueN1", torch::nn::Conv2d(256, 2, 1));
+	valueN1 = register_module("valueN1", torch::nn::Conv2d(CONV_2D_FILTER_SIZE, 2, 1));
 	batchNorm3 = register_module("batchNorm3", torch::nn::BatchNorm2d(torch::nn::BatchNormOptions(2)));
-	valueN2 = register_module("valueN2", torch::nn::Linear(2 * BOARD_SIDE * BOARD_SIDE, 64));
+	valueN2 = register_module("valueN2", torch::nn::Linear(2 * BOARD_LENGTH, 64));
 	valueN3 = register_module("valueN3", torch::nn::Linear(64, 1));
 }
 
 Net::Net(short resNetSize)
 	: m_residualNetSize(resNetSize)
 {
-	Net();
+	Ctor_();
 }
 
 torch::Tensor Net::forwadPolicy(torch::Tensor x)
@@ -65,7 +65,7 @@ torch::Tensor Net::forwadPolicy(torch::Tensor x)
 	}
 
 	x = torch::relu(batchNorm2->forward(policyN1->forward(x)));
-	return torch::log_softmax(policyN2->forward(x.reshape({ x.sizes()[0], 4 * BOARD_SIDE * BOARD_SIDE })), 1);
+	return torch::log_softmax(policyN2->forward(x.reshape({ x.sizes()[0], 4 * BOARD_LENGTH })), 1);
 }
 
 torch::Tensor Net::forwadValue(torch::Tensor x)
@@ -81,7 +81,7 @@ torch::Tensor Net::forwadValue(torch::Tensor x)
 	}
 
 	x = torch::relu(batchNorm3->forward(valueN1->forward(x)));
-	x = torch::relu(valueN2->forward(x.reshape({ x.sizes()[0], 2 * BOARD_SIDE * BOARD_SIDE })));
+	x = torch::relu(valueN2->forward(x.reshape({ x.sizes()[0], 2 * BOARD_LENGTH })));
 	return torch::tanh(valueN3->forward(x));
 }
 
@@ -98,11 +98,23 @@ void Net::forwardBoth(torch::Tensor x, torch::Tensor& policy, torch::Tensor& val
 	}
 
 	policy = torch::relu(batchNorm2->forward(policyN1->forward(x)));
-	policy = torch::log_softmax(policyN2->forward(policy.reshape({ policy.sizes()[0], 4 * BOARD_SIDE * BOARD_SIDE })), 1);
+	policy = torch::log_softmax(policyN2->forward(policy.reshape({ policy.sizes()[0], 4 * BOARD_LENGTH })), 1);
 
 	value = torch::relu(batchNorm3->forward(valueN1->forward(x)));
-	value = torch::relu(valueN2->forward(value.reshape({ value.sizes()[0], 2 * BOARD_SIDE * BOARD_SIDE })));
+	value = torch::relu(valueN2->forward(value.reshape({ value.sizes()[0], 2 * BOARD_LENGTH })));
 	value = torch::tanh(valueN3->forward(value));
+}
+
+void Net::train(bool on)
+{
+	for (int i = 0; i < m_residualNetSize; i++)
+	{
+		m_residualBatch1[i]->train(on);
+		m_residualBatch2[i]->train(on);
+	}
+	batchNorm1->train(on);
+	batchNorm2->train(on);
+	batchNorm3->train(on);
 }
 
 /*--------------------------------------------------------------*/
@@ -137,23 +149,22 @@ void GomokuPolicyAgent::SaveModel()
 
 double GomokuPolicyAgent::PredictValue(char* board, int size, int lastMoveIndex, bool bTurn)
 {
-	torch::Tensor boardTensor = CreateTensorBoard_(board, size, lastMoveIndex, bTurn);
-	torch::Tensor valueTensor = m_pNetworkGpu->forwadValue(boardTensor.reshape({1,4,BOARD_SIDE,BOARD_SIDE}).to(torch::kCUDA));
+	torch::Tensor boardTensor = CreateTensorBoard_(board, size, lastMoveIndex, bTurn).reshape({ 1,4,BOARD_SIDE,BOARD_SIDE });
+	torch::Tensor valueTensor = m_pNetworkGpu->forwadValue(boardTensor.to(torch::kCUDA));
 	return valueTensor[0].item<double>();
 }
 
 torch::Tensor GomokuPolicyAgent::PredictMove(char* board, int size, int lastMoveIndex, bool bTurn)
 {
-	torch::Tensor boardTensor = CreateTensorBoard_(board, size, lastMoveIndex, bTurn).to(torch::kCUDA);
-	torch::Tensor policyTensor = m_pNetworkGpu->forwadPolicy(boardTensor.reshape({ 1,4,BOARD_SIDE,BOARD_SIDE })).exp();
+	torch::Tensor boardTensor = CreateTensorBoard_(board, size, lastMoveIndex, bTurn).reshape({ 1,4,BOARD_SIDE,BOARD_SIDE }).to(torch::kCUDA);
+	torch::Tensor policyTensor = m_pNetworkGpu->forwadPolicy(boardTensor).exp();
 
 	return std::move(policyTensor);
 }
 
-void GomokuPolicyAgent::Train(std::vector<TrainingExample>& trainingExamples, double learningRate, short epochs)
+void GomokuPolicyAgent::Train(std::vector<TrainingExample>& trainingExamples, double learningRate, unsigned int epoch)
 {
 	m_pNetworkGpu->train();
-	torch::optim::Adam adamOptimizer(m_pNetworkGpu->parameters(), learningRate);
 	size_t setSize = trainingExamples.size();
 	std::future<float> promise;
 
@@ -161,18 +172,23 @@ void GomokuPolicyAgent::Train(std::vector<TrainingExample>& trainingExamples, do
 	torch::Tensor inputTensor;
 	torch::Tensor policyAnswerTensor;
 	torch::Tensor valueAnswerTensor;
-	for (int currentEpoch = 0; currentEpoch < epochs; ++currentEpoch)
+	
+	float lossAggregate = 0.0f;
+	for (unsigned int i = 0; i < epoch; i++)
 	{
-		std::cout << "starting epoch " << currentEpoch << std::endl;
-		if (bRepopulate || currentEpoch == 0)
+		torch::optim::SGD optimizer(m_pNetworkGpu->parameters(), learningRate);
+		lossAggregate = 0.0f;
+		std::cout << "starting epoch " << i << std::endl;
+
+		if (bRepopulate || i == 0)
 		{
 			long long batchSize = setSize >= BATCH_SIZE ? BATCH_SIZE : setSize;
 			inputTensor = torch::zeros({ batchSize, 4, BOARD_SIDE, BOARD_SIDE });
-			policyAnswerTensor = torch::zeros({ batchSize }, torch::TensorOptions(torch::kLong));
+			policyAnswerTensor = torch::zeros({ batchSize, BOARD_LENGTH });
 			valueAnswerTensor = torch::zeros({ batchSize, 1 });
 			size_t index = 0;
 			int batchIndex = 0;
-
+			
 			for (TrainingExample& example : trainingExamples)
 			{
 				if (example.lastMove < -1)
@@ -185,12 +201,13 @@ void GomokuPolicyAgent::Train(std::vector<TrainingExample>& trainingExamples, do
 				bool bTurn = example.board[example.lastMove] == 2;
 				inputTensor[batchIndex] = CreateTensorBoard_(
 					example.board,
-					BOARD_SIDE*BOARD_SIDE,
+					BOARD_LENGTH,
 					example.lastMove,
 					bTurn);
 
 				valueAnswerTensor[batchIndex] = example.boardValue;
-				policyAnswerTensor[batchIndex] = example.moveMade;
+				for (int i = 0; i < BOARD_LENGTH; i++)
+					policyAnswerTensor[batchIndex][i] = example.pMoveEstimate[i];
 
 				++batchIndex;
 				++index;
@@ -198,21 +215,15 @@ void GomokuPolicyAgent::Train(std::vector<TrainingExample>& trainingExamples, do
 				if (batchIndex >= BATCH_SIZE || index == setSize)
 				{
 					if (promise.valid())
-					{
-						float loss = promise.get();
-						if (loss < 3.0)
-						{
-							learningRate = 0.0002;
+						lossAggregate += promise.get();
 
-						}
-						else
-						{
-							learningRate = 0.002;
-						}
-						adamOptimizer = torch::optim::Adam(m_pNetworkGpu->parameters(), learningRate);
-					}
-					bool bVerbose = index % BATCH_VERBOSE_SIZE == 0 || index == setSize;
-					promise = std::async(&GomokuPolicyAgent::TrainGpuAsync_, this, adamOptimizer, inputTensor, valueAnswerTensor, policyAnswerTensor, bVerbose);
+					promise = std::async(
+						&GomokuPolicyAgent::TrainGpuAsync_,
+						this,
+						std::move(optimizer),
+						inputTensor,
+						valueAnswerTensor,
+						policyAnswerTensor);
 
 					batchSize = setSize - index;
 					if (batchSize < BATCH_SIZE && batchSize > 0)
@@ -225,33 +236,25 @@ void GomokuPolicyAgent::Train(std::vector<TrainingExample>& trainingExamples, do
 					batchIndex = 0;
 				}
 			}
+
+			if (promise.valid())
+			{
+				lossAggregate += promise.get();
+				std::cout << lossAggregate / (1+(trainingExamples.size() / BATCH_SIZE)) << std::endl;
+			}
 		}
 		else
 		{
-			if (promise.valid())
-			{
-				float loss = promise.get();
-				if (loss < 3.0)
-				{
-					learningRate = 0.0002;
-					
-				}
-				else
-				{
-					learningRate = 0.002;
-				}
-				adamOptimizer = torch::optim::Adam(m_pNetworkGpu->parameters(), learningRate);
-			}
-
-			bool bVerbose = true;
-			promise = std::async(&GomokuPolicyAgent::TrainGpuAsync_, this, adamOptimizer, inputTensor, valueAnswerTensor, policyAnswerTensor, bVerbose);
+			std::cout << TrainGpuAsync_(optimizer, inputTensor, valueAnswerTensor, policyAnswerTensor) << std::endl;
 		}
 	}
 
 	if (promise.valid())
 	{
-		promise.get();
+		lossAggregate += promise.get();
+		std::cout << lossAggregate / trainingExamples.size() << std::endl;
 	}
+
 	m_pNetworkGpu->eval();
 }
 
@@ -264,32 +267,30 @@ std::string const& GomokuPolicyAgent::GetModelPath() const
 
 torch::Tensor GomokuPolicyAgent::CreateTensorBoard_(char* board, int size, int lastMoveIndex, bool bTurn)
 {
-	char turnSymbol = bTurn ? 1 : 2;
 	torch::Tensor finalTensor = torch::zeros({ 4, BOARD_SIDE, BOARD_SIDE });
-	auto accessor = finalTensor.accessor<float, 3>();
 	
 	short row, col;
 	if (lastMoveIndex >= 0)
 	{
 		GomokuUtils::ConvertToRowCol(lastMoveIndex, BOARD_SIDE, row, col);
-		accessor[2][row][col] = 1.0;
+		finalTensor[2][row][col] = 1.0;
 	}
 	
 	for (int i = 0; i < size; ++i)
 	{
 		GomokuUtils::ConvertToRowCol(i, BOARD_SIDE, row, col);
-		if (board[i] == turnSymbol)
+		if (board[i] == 1)
 		{
-			accessor[0][row][col] = 1.0;
+			finalTensor[0][row][col] = 1.0;
 		}
 		else if (board[i] != 0)
 		{
-			accessor[1][row][col] = 1.0;
+			finalTensor[1][row][col] = 1.0;
 		}
 
 		if (bTurn)
 		{
-			accessor[3][row][col] = 1.0;
+			finalTensor[3][row][col] = 1.0;
 		}
 	}
 
@@ -297,13 +298,12 @@ torch::Tensor GomokuPolicyAgent::CreateTensorBoard_(char* board, int size, int l
 }
 
 float GomokuPolicyAgent::TrainGpuAsync_(
-	torch::optim::Adam adamOptimizer,
+	torch::optim::Optimizer& optimizer,
 	torch::Tensor inputTensor,
 	torch::Tensor valueAnswerTensor,
-	torch::Tensor policyAnswerTensor,
-	bool bVerbose)
+	torch::Tensor policyAnswerTensor)
 {
-	adamOptimizer.zero_grad();
+	optimizer.zero_grad();
 	torch::Tensor policyTensor;
 	torch::Tensor valueTensor;
 
@@ -311,17 +311,15 @@ float GomokuPolicyAgent::TrainGpuAsync_(
 		policyTensor,
 		valueTensor);
 
-	torch::Tensor valueLoss = (valueTensor - valueAnswerTensor.to(torch::kCUDA)).pow(2).mean(); // test new loss equation
-	torch::Tensor policyLoss = torch::nll_loss(policyTensor, policyAnswerTensor.to(torch::kCUDA));
+//	std::cout << valueTensor << std::endl;
+	torch::Tensor valueLoss = (valueTensor - valueAnswerTensor.to(torch::kCUDA)).pow(2); // test new loss equation
+	torch::Tensor policyLoss = torch::sum(-policyAnswerTensor.to(torch::kCUDA) * policyTensor, 1);
 
-	torch::Tensor lossTensor = valueLoss + policyLoss;
+	torch::Tensor lossTensor = (valueLoss + policyLoss).mean();
+
+	float loss = lossTensor.item<float>();
 	lossTensor.backward();
-	adamOptimizer.step();
-
-	if (bVerbose)
-	{
-		std::cout << lossTensor.data() << std::endl;
-	}
+	optimizer.step();
 
 	return lossTensor.item<float>();
 }
