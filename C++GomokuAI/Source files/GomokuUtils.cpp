@@ -21,6 +21,9 @@
 
 namespace GomokuUtils
 {
+	std::string trainingFilename = "TrainingLog.log";
+	std::ofstream k_trainingLog;
+
 	void WriteExampleSetToFile_(std::vector<TrainingExample> exampleSet, short fileNameNum);
 
 	std::vector<TrainingExample> GetExampleSetFromFile_(short fileNameNum);
@@ -128,6 +131,7 @@ namespace GomokuUtils
 
 	void TrainBluPig()
 	{
+		k_trainingLog.open(trainingFilename, std::ofstream::binary);
 		std::shared_ptr<GomokuPolicyAgent> pAgent = std::make_shared<GomokuPolicyAgent>();
 		auto pBluPigPlayer = std::make_shared<Player::BluPigPlayer>();
 		std::vector<TrainingExample> exampleSet;
@@ -164,7 +168,8 @@ namespace GomokuUtils
 				pAgent->SaveModel();
 			}
 
-			Evaluate();
+			auto pAgentPlayer = std::make_shared<Player::AgentPlayer>(pAgent, 800);
+			Evaluate(pAgentPlayer, pBluPigPlayer);
 			std::ifstream src(pAgent->GetModelPath(), std::ios::binary);
 			std::ofstream dst("GomokuModel_Old.pt", std::ios::binary);
 
@@ -196,7 +201,9 @@ namespace GomokuUtils
 			
 			if (count == 20)
 			{
-				Evaluate();
+				auto pAgentPlayer = std::make_shared<Player::AgentPlayer>(pAgent, 800);
+				auto pAgentPlayer2 = std::make_shared<Player::AgentPlayer>(pAgent, 800);
+				Evaluate(pAgentPlayer, pAgentPlayer2);
 				std::ifstream src(pAgent->GetModelPath(), std::ios::binary);
 				std::ofstream dst("GomokuModel_Old.pt", std::ios::binary);
 
@@ -210,48 +217,49 @@ namespace GomokuUtils
 		}
 	}
 
-	short Evaluate()
+	void Evaluate(std::shared_ptr<Player::IPlayer> pAgent1, std::shared_ptr<Player::IPlayer> pAgent2)
 	{
 		std::cout << "Evaluating" << std::endl;
-		std::shared_ptr<GomokuPolicyAgent> pAgent = std::make_shared<GomokuPolicyAgent>();
-		std::shared_ptr<GomokuPolicyAgent> pAgentOld = std::make_shared<GomokuPolicyAgent>("GomokuModel_Old.pt");
-
+		k_trainingLog << "Evaluating" << std::endl;
 		std::future<std::vector<TrainingExample>> game1Promise;
-		auto pAgentPlayer = std::make_shared<Player::AgentPlayer>(pAgent, 600);
-		auto pAgentPlayerOld = std::make_shared<Player::AgentPlayer>(pAgentOld, 600);
 
 		auto pGame = std::make_shared<GomokuGame>(BOARD_SIDE, BOARD_WIN);
-		PlayGeneratorCfg cfg({ 0, 1, false, false, true, true, pAgentPlayer, pAgentPlayerOld, true, -1 });
+		PlayGeneratorCfg cfg({ 0, 1, false, false, true, true, pAgent1, pAgent2, true, -1 });
 		std::vector<TrainingExample> subExampleSet = GenerateExamplesFromPlay_(cfg, pGame);
 
-		short winAmount = 0;
-		if (subExampleSet.size() > 1)
+		switch (pGame->GetGameWinState())
 		{
-			bool bAgentWon = subExampleSet[0].boardValue > 0;
-			std::cout << "P1: Agent vs P2: Old Agent " << bAgentWon << std::endl;
-
-			if (bAgentWon)
-				winAmount++;
+		case WinnerState_enum::P1:
+			k_trainingLog << "Player 1 " + pAgent1->PrintWinningStatement() << std::endl;
+			break;
+		case WinnerState_enum::P2:
+			k_trainingLog << "Player 2 " + pAgent2->PrintWinningStatement() << std::endl;
+			break;
+		default:
+			break;
 		}
 
-		pAgentPlayer->ClearTree();
-		pAgentPlayerOld->ClearTree();
+		pAgent1->ClearTree();
+		pAgent2->ClearTree();
 
 		auto pGame2 = std::make_shared<GomokuGame>(BOARD_SIDE, BOARD_WIN);
-		PlayGeneratorCfg cfg2({ 0, 1, false, false, true, false, pAgentPlayerOld, pAgentPlayer, true, -1 });
+		PlayGeneratorCfg cfg2({ 0, 1, false, false, true, false, pAgent2, pAgent1, true, -1 });
 		subExampleSet = GenerateExamplesFromPlay_(cfg2, pGame2);
 
-		if (subExampleSet.size() > 1)
+		switch (pGame->GetGameWinState())
 		{
-			bool bAgentWon = subExampleSet[0].boardValue < 0;
-			std::cout << "P1: Old Agent vs P2: Agent " << bAgentWon << std::endl;
-
-			if (bAgentWon)
-				winAmount++;
+		case WinnerState_enum::P1:
+			k_trainingLog << "Player 1 " + pAgent2->PrintWinningStatement() << std::endl;
+			break;
+		case WinnerState_enum::P2:
+			k_trainingLog << "Player 2 " + pAgent1->PrintWinningStatement() << std::endl;
+			break;
+		default:
+			break;
 		}
 
 		std::cout << "Evaluating Done" << std::endl;
-		return winAmount;
+		k_trainingLog << "Evaluating Done" << std::endl;
 	}
 
 	/*------------------------------------------------------------------------------------------------*/
@@ -347,9 +355,11 @@ namespace GomokuUtils
 			{
 			case WinnerState_enum::P1:
 				boardValue = 1.0 * 9;
+				k_trainingLog << "Player 1 " + cfg.pPlayer1->PrintWinningStatement() << std::endl;
 				break;
 			case WinnerState_enum::P2:
 				boardValue = -1.0 * 10;
+				k_trainingLog << "Player 2 " + cfg.pPlayer2->PrintWinningStatement() << std::endl;
 				break;
 			default:
 				break;

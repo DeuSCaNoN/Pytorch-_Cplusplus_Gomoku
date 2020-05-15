@@ -12,5 +12,9 @@ namespace Player
 		int MakeMove(std::shared_ptr<GomokuGame> pGame, bool bTurn, float* moveEstimates);
 
 		void MoveMadeInGame(int /*moveIndex*/) {}
+
+		std::string PrintWinningStatement();
+
+		void ClearTree() {}
 	};
 }

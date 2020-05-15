@@ -22,6 +22,8 @@ namespace Player
 
 		void ClearTree();
 
+		std::string PrintWinningStatement();
+
 	private:
 		std::shared_ptr<GomokuPolicyAgent> m_pAgent;
 		std::shared_ptr<MonteCarlo::MonteCarloTreeSearch> m_pTreeSearch;

@@ -35,4 +35,9 @@ namespace Player
 		pMoveEstimates[moveMade] = 1.0f;
 		return moveMade;
 	}
+
+	std::string BluPigPlayer::PrintWinningStatement()
+	{
+		return "BluPig won";
+	}
 }

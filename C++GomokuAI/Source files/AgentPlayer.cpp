@@ -45,4 +45,9 @@ namespace Player
 	{
 		m_pTreeSearch->Reset();
 	}
+
+	std::string AgentPlayer::PrintWinningStatement()
+	{
+		return "Agent won";
+	}
 }
