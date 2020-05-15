@@ -8,7 +8,7 @@
 #include <future>
 #include <exception>
 
-#define BATCH_SIZE 64
+#define BATCH_SIZE 64U
 #define BATCH_VERBOSE_SIZE 3200 // BATCH_SIZE * 50
 #define CONV_2D_FILTER_SIZE 256
 
@@ -165,7 +165,7 @@ torch::Tensor GomokuPolicyAgent::PredictMove(char* board, int size, int lastMove
 void GomokuPolicyAgent::Train(std::vector<TrainingExample>& trainingExamples, double learningRate, unsigned int epoch)
 {
 	m_pNetworkGpu->train();
-	size_t setSize = trainingExamples.size();
+	long long setSize = trainingExamples.size();
 	std::future<float> promise;
 
 	bool bRepopulate = trainingExamples.size() > BATCH_SIZE;
@@ -229,7 +229,7 @@ void GomokuPolicyAgent::Train(std::vector<TrainingExample>& trainingExamples, do
 					if (batchSize < BATCH_SIZE && batchSize > 0)
 					{
 						inputTensor = torch::zeros({ batchSize, 4, BOARD_SIDE, BOARD_SIDE });
-						policyAnswerTensor = torch::zeros({ batchSize }, torch::TensorOptions(torch::kLong));
+						policyAnswerTensor = torch::zeros({ batchSize, BOARD_LENGTH });
 						valueAnswerTensor = torch::zeros({ batchSize, 1 });
 					}
 
