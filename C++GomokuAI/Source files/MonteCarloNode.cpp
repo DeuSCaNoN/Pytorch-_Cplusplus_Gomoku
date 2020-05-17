@@ -127,25 +127,22 @@ namespace MonteCarlo
 	int MonteCarloNode::Select(bool playerToCheck, short c_puct)
 	{
 		int index = -1;
-		int offset = m_gameSpace / 3;
 		double maxValue = playerToCheck ? -500 : DBL_MAX;
 		for (int i = 0; i < m_gameSpace; i++)
 		{
-			int indexToTest = (i + offset) % m_gameSpace;
-
-			if (m_ppChildren[indexToTest] == nullptr)
+			if (m_ppChildren[i] == nullptr)
 				continue;
 
 			if (index == -1)
-				index = indexToTest;
+				index = i;
 			
-			double value = m_ppChildren[indexToTest]->GetValue(c_puct, playerToCheck);
+			double value = m_ppChildren[i]->GetValue(c_puct, playerToCheck);
 			if (playerToCheck)
 			{
 				if (value > maxValue)
 				{
 					maxValue = value;
-					index = indexToTest;
+					index = i;
 				}
 			}
 			else
@@ -153,7 +150,7 @@ namespace MonteCarlo
 				if (value < maxValue)
 				{
 					maxValue = value;
-					index = indexToTest;
+					index = i;
 				}
 			}
 		}
