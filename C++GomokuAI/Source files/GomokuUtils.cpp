@@ -42,6 +42,35 @@ namespace GomokuUtils
 		col = index % sideLength;
 	}
 
+	void HumanPlay()
+	{
+		std::shared_ptr<GomokuPolicyAgent> pAgent = std::make_shared<GomokuPolicyAgent>();
+		auto pAgentPlayer = std::make_shared<Player::AgentPlayer>(pAgent, 1500);
+
+		auto pGame = std::make_shared<GomokuGame>(BOARD_SIDE, BOARD_WIN);
+
+		while (pGame->GetGameWinState() == WinnerState_enum::None)
+		{
+			float throwAway[BOARD_LENGTH];
+			int index = pAgentPlayer->MakeMove(pGame, pGame->GetPlayerTurn(), throwAway);
+			pGame->PlayMove(index);
+			pAgentPlayer->MoveMadeInGame(index);
+			system("CLS");
+			GomokuUtils::DrawMatrix(pGame->GetBoard(), BOARD_SIDE);
+
+			int row, col;
+			std::cout << "Row: " << std::endl;
+			std::cin >> row;
+			std::cout << "Col: " << std::endl;
+			std::cin >> col;
+			index = ConvertToIndex(row, col, BOARD_SIDE);
+			pGame->PlayMove(index);
+			system("CLS");
+			GomokuUtils::DrawMatrix(pGame->GetBoard(), BOARD_SIDE);
+			pAgentPlayer->MoveMadeInGame(index);
+		}
+	}
+
 	void DrawMatrix(char* matrix, int sideLength)
 	{
 		std::cout << "\n" << "   ";
@@ -148,13 +177,13 @@ namespace GomokuUtils
 				std::future<std::vector<TrainingExample>> promise1;
 				std::future<std::vector<TrainingExample>> promise2;
 
-				auto pAgentPlayer = std::make_shared<Player::AgentPlayer>(pAgent, 150);
-				PlayGeneratorCfg cfg({ 0, 1, false, false, true, true, pBluPigPlayer, pAgentPlayer, true, rand() % BOARD_LENGTH });
+				auto pAgentPlayer = std::make_shared<Player::AgentPlayer>(pAgent, 300);
+				PlayGeneratorCfg cfg({ 0, 1, false, false, true, true, pBluPigPlayer, pAgentPlayer, true, BOARD_LENGTH / 2 });
 
 				promise1 = std::async(&GenerateExamplesFromPlay_, cfg, pGame1);
 
 				auto pAgentPlayer2 = std::make_shared<Player::AgentPlayer>(pAgent, 150);
-				PlayGeneratorCfg cfg2({ 0, 1, false, false, true, true, pAgentPlayer2, pBluPigPlayer, true, rand() % BOARD_LENGTH });
+				PlayGeneratorCfg cfg2({ 0, 1, false, false, true, true, pAgentPlayer2, pBluPigPlayer, true, BOARD_LENGTH / 2 });
 
 				promise2 = std::async(&GenerateExamplesFromPlay_, cfg2, pGame2);
 
@@ -183,26 +212,26 @@ namespace GomokuUtils
 		std::vector<TrainingExample> exampleSet;
 
 		//unsigned supportedGames = std::thread::hardware_concurrency() / 4;
-		std::vector<int> startMove = { BOARD_LENGTH / 2, BOARD_LENGTH / 4, BOARD_LENGTH *3/4, BOARD_LENGTH / 4 + 4 };
 
 		auto pGame = std::make_shared<GomokuGame>(BOARD_SIDE, BOARD_WIN);
-		auto pAgentPlayer = std::make_shared<Player::AgentPlayer>(pAgent, 150);
+		auto pAgentPlayer = std::make_shared<Player::AgentPlayer>(pAgent, 400);
 		unsigned int count = 1;
 		while (true)
 		{
 			pGame->ResetBoard();
 			pAgentPlayer->ClearTree();
 
-			PlayGeneratorCfg cfg({ 0, 1, false, false, true, true, pAgentPlayer, pAgentPlayer, true, startMove[rand() % startMove.size()] });
+			PlayGeneratorCfg cfg({ 0, 1, false, false, true, true, pAgentPlayer, pAgentPlayer, true, BOARD_LENGTH / 2 });
 			exampleSet = std::move(GenerateExamplesFromPlay_(cfg, pGame));
 
-			pAgent->Train(exampleSet, 0.002);
+			pAgent->Train(exampleSet, 0.2);
 			pAgent->SaveModel();
+			pAgentPlayer->UpdateModel(pAgent->GetModelPath());
 			
-			if (count == 20)
+			if (count == 100)
 			{
-				auto pAgentPlayer = std::make_shared<Player::AgentPlayer>(pAgent, 800);
-				auto pAgentPlayer2 = std::make_shared<Player::AgentPlayer>(pAgent, 800);
+				auto pAgentPlayer = std::make_shared<Player::AgentPlayer>(pAgent, 600);
+				auto pAgentPlayer2 = std::make_shared<Player::AgentPlayer>(pAgent, 600);
 				Evaluate(pAgentPlayer, pAgentPlayer2);
 				std::ifstream src(pAgent->GetModelPath(), std::ios::binary);
 				std::ofstream dst("GomokuModel_Old.pt", std::ios::binary);
@@ -210,10 +239,7 @@ namespace GomokuUtils
 				dst << src.rdbuf();
 				count = 1;
 			}
-			else if (count % 4 == 0)
-			{
-				exampleSet.clear();
-			}
+			exampleSet.clear();
 		}
 	}
 

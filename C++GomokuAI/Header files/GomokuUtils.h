@@ -8,6 +8,8 @@ namespace GomokuUtils
 {
 	void ConvertToRowCol(int index, int sideLength, short& row, short& col);
 
+	void HumanPlay();
+
 	void TeachFromValueSet(bool bGenerate = false);
 
 	void TrainSelfPlay();
