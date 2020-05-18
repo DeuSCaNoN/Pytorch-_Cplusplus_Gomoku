@@ -46,8 +46,8 @@ private:
 	void FreeCurrentBoard_();
 	void UpdateWinBoard_(int index);
 
-	bool IsMoveWinning_(int index) const;
-	int DirectionAmount_(
+	bool IsMoveWinning_(int index, bool& brokeFirstPlayRules) const;
+	std::pair<int, bool> DirectionAmount_(
 		int index,
 		char symbol,
 		std::function<int(int)> indexModifier,

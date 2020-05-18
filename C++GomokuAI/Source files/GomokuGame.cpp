@@ -91,12 +91,17 @@ bool GomokuGame::IsBoardFull() const
 
 bool GomokuGame::IsMoveWinning(int index) const
 {
-	return IsMoveWinning_(index);
+	bool bBreakFirstPlayRule = false;
+	bool bWinning = IsMoveWinning_(index, bBreakFirstPlayRule);
+	if (bBreakFirstPlayRule && m_pGameBoard[index] == _P1SYMBOL_)
+		return false;
+
+	return bWinning;
 }
 
 bool GomokuGame::IsMoveWinning(short row, short col) const
 {
-	return IsMoveWinning_(ConvertToIndex(row, col, m_sideLength));
+	return IsMoveWinning(ConvertToIndex(row, col, m_sideLength));
 }
 
 char* GomokuGame::GetBoard() const
@@ -167,7 +172,12 @@ bool GomokuGame::PlayMove(int index)
 
 	m_movesPlayed++;
 
-	if (IsMoveWinning_(index))
+	bool bBreakFirstPlayRule = false;
+	bool bWinning = IsMoveWinning_(index, bBreakFirstPlayRule);
+
+	if (bBreakFirstPlayRule && m_playerTurn)
+		m_winner = WinnerState_enum::P2;
+	else if (bWinning)
 		m_winner = m_playerTurn ? WinnerState_enum::P1 : WinnerState_enum::P2;
 	else if (IsBoardFull())
 		m_winner = WinnerState_enum::Draw;
@@ -194,7 +204,7 @@ void GomokuGame::FreeCurrentBoard_()
 	delete m_pGameBoard;
 }
 
-int GomokuGame::DirectionAmount_(
+std::pair<int, bool> GomokuGame::DirectionAmount_(
 	int index,
 	char symbol,
 	std::function<int(int)> indexModifier,
@@ -202,6 +212,7 @@ int GomokuGame::DirectionAmount_(
 {
 	int aboveAmount = 0;
 	int testIndex = indexModifier(index);
+	bool bBlocked = false;
 	while (indexCheck(testIndex))
 	{
 		if (m_pGameBoard[testIndex] == symbol)
@@ -209,17 +220,21 @@ int GomokuGame::DirectionAmount_(
 			aboveAmount++;
 			testIndex = indexModifier(testIndex);
 		}
+		else if (m_pGameBoard[testIndex] == _EMPTYSYMBOL_)
+		{
+			break;
+		}
 		else
+		{
+			bBlocked = true;
 			break;
-
-		if (aboveAmount >= (m_winAmount - 1))
-			break;
+		}
 	}
 
-	return aboveAmount;
+	return std::pair<int, bool>(aboveAmount, bBlocked);
 }
 
-bool GomokuGame::IsMoveWinning_(int index) const
+bool GomokuGame::IsMoveWinning_(int index, bool& brokeFirstPlayRules) const
 {
 	char symbol = m_pGameBoard[index];
 	if (symbol == _EMPTYSYMBOL_)
@@ -230,54 +245,112 @@ bool GomokuGame::IsMoveWinning_(int index) const
 
 	auto aboveModifier = [sideLength](int index) {return index - sideLength;};
 	auto aboveCheck = [](int index) {return index >= 0; };
-	std::future<int> abovePromise = std::async(&GomokuGame::DirectionAmount_, this, index, symbol, aboveModifier, aboveCheck);
+	std::future<std::pair<int, bool>> abovePromise = std::async(&GomokuGame::DirectionAmount_, this, index, symbol, aboveModifier, aboveCheck);
 
 	auto belowModifier = [sideLength](int index) {return index + sideLength;};
 	auto belowCheck = [boardLength](int index) {return index < boardLength;};
-	std::future<int> belowPromise = std::async(&GomokuGame::DirectionAmount_, this, index, symbol, belowModifier, belowCheck);
+	std::future<std::pair<int, bool>> belowPromise = std::async(&GomokuGame::DirectionAmount_, this, index, symbol, belowModifier, belowCheck);
 
 	auto leftModifier = [](int index) {return index - 1; };
 	auto leftCheck = [sideLength](int index) {return (index % sideLength) < (sideLength - 1);};
-	std::future<int> leftPromise = std::async(&GomokuGame::DirectionAmount_, this, index, symbol, leftModifier, leftCheck);
+	std::future<std::pair<int, bool>> leftPromise = std::async(&GomokuGame::DirectionAmount_, this, index, symbol, leftModifier, leftCheck);
 
 	auto rightModifier = [](int index) {return index + 1; };
 	auto rightCheck = [sideLength](int index) {return (index % sideLength) != 0;};
-	std::future<int> rightPromise = std::async(&GomokuGame::DirectionAmount_, this, index, symbol, rightModifier, rightCheck);
+	std::future<std::pair<int, bool>> rightPromise = std::async(&GomokuGame::DirectionAmount_, this, index, symbol, rightModifier, rightCheck);
 
 	auto upLeftModifier = [sideLength](int index) {return index - sideLength - 1;};
 	auto upLeftCheck = [sideLength](int index) {return index > 0 && (index % sideLength) < (sideLength - 1);};
-	std::future<int> upLeftPromise = std::async(&GomokuGame::DirectionAmount_, this, index, symbol, upLeftModifier, upLeftCheck);
+	std::future<std::pair<int, bool>> upLeftPromise = std::async(&GomokuGame::DirectionAmount_, this, index, symbol, upLeftModifier, upLeftCheck);
 
 	auto upRightModifier = [sideLength](int index) {return index - sideLength + 1; };
 	auto upRightCheck = [sideLength](int index) {return index > 0 && (index % sideLength) != 0;};
-	std::future<int> upRightPromise = std::async(&GomokuGame::DirectionAmount_, this, index, symbol, upRightModifier, upRightCheck);
+	std::future<std::pair<int, bool>> upRightPromise = std::async(&GomokuGame::DirectionAmount_, this, index, symbol, upRightModifier, upRightCheck);
 
 	auto downLeftModifier = [sideLength](int index) {return index + sideLength - 1; };
 	auto downLeftCheck = [boardLength, sideLength](int index) {return index < boardLength && (index % sideLength) < (sideLength - 1);};
-	std::future<int> downLeftPromise = std::async(&GomokuGame::DirectionAmount_, this, index, symbol, downLeftModifier, downLeftCheck);
+	std::future<std::pair<int, bool>> downLeftPromise = std::async(&GomokuGame::DirectionAmount_, this, index, symbol, downLeftModifier, downLeftCheck);
 
 	auto downRightModifier = [sideLength](int index) {return index + sideLength + 1; };
 	auto downRightCheck = [boardLength, sideLength](int index) {return index < boardLength && (index % sideLength) != 0;};
-	std::future<int> downRightPromise = std::async(&GomokuGame::DirectionAmount_, this, index, symbol, downRightModifier, downRightCheck);
+	std::future<std::pair<int, bool>> downRightPromise = std::async(&GomokuGame::DirectionAmount_, this, index, symbol, downRightModifier, downRightCheck);
 
-	int above = abovePromise.get();
-	int below = belowPromise.get();
-	int left = leftPromise.get();
-	int right = rightPromise.get();
+	auto abovePair = abovePromise.get();
+	auto belowPair = belowPromise.get();
+	auto leftPair = leftPromise.get();
+	auto rightPair = rightPromise.get();
 
-	int upLeft = upLeftPromise.get();
-	int upRight = upRightPromise.get();
-	int downLeft = downLeftPromise.get();
-	int downRight = downRightPromise.get();
+	auto upLeftPair = upLeftPromise.get();
+	auto upRightPair = upRightPromise.get();
+	auto downLeftPair = downLeftPromise.get();
+	auto downRightPair = downRightPromise.get();
 
-	if (above + below + 1 >= m_winAmount)
-		return true;
-	else if (left + right + 1 >= m_winAmount)
-		return true;
-	else if (upLeft + downRight + 1 >= m_winAmount)
-		return true;
-	else if (upRight + downLeft + 1 >= m_winAmount)
-		return true;
+	short freeThree = 0;
+	short freeFour = 0;
+	bool winner = false;
 
-	return false;
+	int northSouth = abovePair.first + belowPair.first;
+	int eastWest = leftPair.first + rightPair.first;
+	int leftDiag = upLeftPair.first + downRightPair.first;
+	int rightDiag = upRightPair.first + downLeftPair.first;
+
+	if (!abovePair.second && !belowPair.second && northSouth + 1 == 3)
+		freeThree++;
+
+	if (!abovePair.second && !belowPair.second && northSouth + 1 == 4)
+		freeFour++;
+
+	if (!leftPair.second && !rightPair.second && eastWest + 1 == 3)
+		freeThree++;
+
+	if (!leftPair.second && !rightPair.second && eastWest + 1 == 4)
+		freeFour++;
+
+	if (!upLeftPair.second && !downRightPair.second && leftDiag + 1 == 3)
+		freeThree++;
+
+	if (!upLeftPair.second && !downRightPair.second && leftDiag + 1 == 4)
+		freeFour++;
+
+	if (!upRightPair.second && !downLeftPair.second && rightDiag + 1 == 3)
+		freeThree++;
+
+	if (!upRightPair.second && !downLeftPair.second && rightDiag + 1 == 4)
+		freeFour++;
+
+	if (northSouth + 1 >= m_winAmount)
+	{
+		if (northSouth >= m_winAmount)
+			brokeFirstPlayRules = true;
+
+		winner = true;
+	}
+	else if (eastWest + 1 >= m_winAmount)
+	{
+		if (eastWest >= m_winAmount)
+			brokeFirstPlayRules = true;
+
+		winner = true;
+	}
+	else if (leftDiag + 1 >= m_winAmount)
+	{
+		if (leftDiag >= m_winAmount)
+			brokeFirstPlayRules = true;
+
+		winner = true;
+	}
+	else if (rightDiag + 1 >= m_winAmount)
+	{
+		if (rightDiag >= m_winAmount)
+			brokeFirstPlayRules = true;
+
+		winner = true;
+	}
+
+	if (freeThree >= 2)
+		brokeFirstPlayRules = true;
+	else if (freeFour >= 2)
+		brokeFirstPlayRules = true;
+
+	return winner;
 }
