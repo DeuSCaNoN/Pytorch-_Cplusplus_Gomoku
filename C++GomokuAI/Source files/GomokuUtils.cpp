@@ -376,25 +376,27 @@ namespace GomokuUtils
 				bFirst = false;
 			}
 
-			float boardValue = 0.0f;
+			float maxboardValue = 0.0f;
 			switch (pGame->GetGameWinState())
 			{
 			case WinnerState_enum::P1:
-				boardValue = 1.0 * 9;
+				maxboardValue = 1.0 * 9;
 				k_trainingLog << "Player 1 " + cfg.pPlayer1->PrintWinningStatement() << std::endl;
 				break;
 			case WinnerState_enum::P2:
-				boardValue = -1.0 * 10;
+				maxboardValue = -1.0 * 10;
 				k_trainingLog << "Player 2 " + cfg.pPlayer2->PrintWinningStatement() << std::endl;
 				break;
 			default:
 				break;
 			}
 
-			boardValue = boardValue / pGame->GetMovesPlayed();
+			float boardValue = maxboardValue / pGame->GetMovesPlayed();
+			float boardValueIncrease = (maxboardValue / abs(maxboardValue) - boardValue) / (exampleSize - currentGameStart - 1);
 			for (int j = currentGameStart; j < exampleSize; j++)
 			{
 				exampleSet[j].boardValue = boardValue;
+				boardValue += boardValueIncrease;
 			}
 
 			if (exampleSize == MAX_EXAMPLE_SIZE - 1)
