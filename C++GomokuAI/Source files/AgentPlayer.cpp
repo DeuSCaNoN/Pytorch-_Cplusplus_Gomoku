@@ -15,6 +15,11 @@ namespace Player
 		m_pTreeSearch = std::make_shared<MonteCarlo::MonteCarloTreeSearch>(BOARD_LENGTH, m_pAgent, rollouts);
 	}
 
+	void AgentPlayer::UpdateModel(std::string const& modelPath)
+	{
+		m_pTreeSearch->UpdateModel(modelPath);
+	}
+
 	int AgentPlayer::MakeMove(std::shared_ptr<GomokuGame> pGame, bool bTurn, float* pMoveEstimates)
 	{
 		memset(pMoveEstimates, 0, BOARD_LENGTH);

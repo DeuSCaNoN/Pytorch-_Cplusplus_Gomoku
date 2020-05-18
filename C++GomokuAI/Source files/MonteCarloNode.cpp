@@ -105,18 +105,18 @@ namespace MonteCarlo
 		return m_ppChildren;
 	}
 
-	void MonteCarloNode::Update(double leafValue)
+	void MonteCarloNode::Update(double leafValue, int visitUpdate)
 	{
-		m_visits++;
+		m_visits += visitUpdate;
 		m_qValue += leafValue;
 	}
 
-	void MonteCarloNode::RecursiveUpdate(double leafValue)
+	void MonteCarloNode::RecursiveUpdate(double leafValue, int visitUpdate)
 	{
 		if (m_pParent != nullptr)
-			m_pParent->RecursiveUpdate(leafValue);
+			m_pParent->RecursiveUpdate(leafValue, visitUpdate);
 
-		Update(leafValue);
+		Update(leafValue, visitUpdate);
 	}
 
 	int MonteCarloNode::GetVisits() const
@@ -178,9 +178,9 @@ namespace MonteCarlo
 		return index;
 	}
 
-	void MonteCarloNode::SelectBestFour(bool playerToCheck, int* indicies, short c_puct )
+	void MonteCarloNode::SelectBestFour(bool playerToCheck, int* indicies, short c_puct)
 	{
-		float maxValue = playerToCheck ? -500 : DBL_MAX;
+		float maxValue = playerToCheck ? -1000.0f : DBL_MAX;
 		indicies[0] = -1;
 		indicies[1] = -1;
 		indicies[2] = -1;
@@ -234,6 +234,13 @@ namespace MonteCarlo
 				}
 				++itemPushed;
 			}
+		}
+
+		if (pIndex1 != indicies)
+		{
+			int temp = indicies[0];
+			indicies[0] = *pIndex1;
+			*pIndex1 = temp;
 		}
 	}
 

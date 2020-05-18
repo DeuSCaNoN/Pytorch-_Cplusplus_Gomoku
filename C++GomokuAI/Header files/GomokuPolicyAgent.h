@@ -53,6 +53,8 @@ public:
 
 	void SaveModel();
 
+	void LoadModel(std::string const& modelPath);
+
 	void Train(std::vector<TrainingExample>& trainingExamples, double learningRate, unsigned int epoch = 10);
 
 	double PredictValue(char* board, int size, int lastMoveIndex, bool bTurn);

@@ -18,7 +18,6 @@ namespace MonteCarlo
 		void ExpandChildren(int* actions, torch::Tensor& probs, int size);
 		void DefaultExpandChildren(int* actions, int size);
 		double GetValue(short c_puct, bool bPlayerToSearch);
-		void Update(double leafValue);
 		int Select(bool playerToCheck, short c_puct=100);
 
 		int SelectVisits() const;
@@ -29,7 +28,8 @@ namespace MonteCarlo
 
 		MonteCarloNode** GetChildren();
 
-		void RecursiveUpdate(double leafValue);
+		void Update(double leafValue, int visitUpdate = 1);
+		void RecursiveUpdate(double leafValue, int visitUpdate = 1);
 		int GetVisits() const;
 
 		int GetChildrenCount() const;

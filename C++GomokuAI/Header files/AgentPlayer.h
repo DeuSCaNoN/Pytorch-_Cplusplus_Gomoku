@@ -16,6 +16,8 @@ namespace Player
 
 		virtual ~AgentPlayer() = default;
 
+		void UpdateModel(std::string const& modelPath);
+
 		int MakeMove(std::shared_ptr<GomokuGame> pGame, bool bTurn, float* moveEstimates);
 
 		void MoveMadeInGame(int moveIndex);

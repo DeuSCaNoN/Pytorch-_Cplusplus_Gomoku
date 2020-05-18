@@ -147,6 +147,13 @@ void GomokuPolicyAgent::SaveModel()
 	std::cout << "Model Saved" << std::endl;
 }
 
+void GomokuPolicyAgent::LoadModel(std::string const& modelPath)
+{
+	torch::load(m_pNetworkGpu, modelPath);
+	m_pNetworkGpu->to(torch::kCUDA);
+	m_pNetworkGpu->eval();
+}
+
 double GomokuPolicyAgent::PredictValue(char* board, int size, int lastMoveIndex, bool bTurn)
 {
 	torch::Tensor boardTensor = CreateTensorBoard_(board, size, lastMoveIndex, bTurn).reshape({ 1,4,BOARD_SIDE,BOARD_SIDE });
@@ -312,12 +319,14 @@ float GomokuPolicyAgent::TrainGpuAsync_(
 		valueTensor);
 
 //	std::cout << valueTensor << std::endl;
+//	std::cout << valueAnswerTensor << std::endl;
 	torch::Tensor valueLoss = (valueTensor - valueAnswerTensor.to(torch::kCUDA)).pow(2); // test new loss equation
 	torch::Tensor policyLoss = torch::sum(-policyAnswerTensor.to(torch::kCUDA) * policyTensor, 1);
 
+//	std::cout << valueLoss << std::endl;
+
 	torch::Tensor lossTensor = (valueLoss + policyLoss).mean();
 
-	float loss = lossTensor.item<float>();
 	lossTensor.backward();
 	optimizer.step();
 
