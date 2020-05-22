@@ -60,15 +60,22 @@ namespace MonteCarlo
 
 	/*--------------------------------------------------------------*/
 
-	void MonteCarloNode::ExpandChildren(int* actions, torch::Tensor& probs, int size)
+	void MonteCarloNode::ExpandChildren(int* actions, torch::Tensor& probs, int size, char* pCandidateMoves)
 	{
 		probs = probs.to(torch::kCPU);
+
 		for (int i = 0; i < size; i++)
 		{
 			int index = actions[i];
-			double probability = probs[0][index].item<float>() * (0.15 / size); // priors probability + Dirichlet noise
+
 			if (!m_ppChildren[index])
 			{
+				double probability = -1.0;
+				if (pCandidateMoves[index] != 0)
+				{
+					probability = probs[0][index].item<float>() * (0.15 / size); // priors probability + Dirichlet noise
+				}
+				
 				m_ppChildren[index] = new MonteCarloNode(this, probability, m_gameSpace);
 				m_childrenSize++;
 			}
@@ -93,6 +100,9 @@ namespace MonteCarlo
 
 	double MonteCarloNode::GetValue(short c_puct, bool bPlayerToSearch)
 	{
+		if (m_probability < 0)
+			return NON_CANDIDATE_MOVE;
+
 		float selectValue = c_puct * m_probability * sqrt(m_pParent->GetVisits()) / m_visits;
 		if (!bPlayerToSearch)
 			selectValue = -selectValue;
@@ -136,6 +146,9 @@ namespace MonteCarlo
 				index = i;
 			
 			double value = m_ppChildren[i]->GetValue(c_puct, playerToCheck);
+			if (value == NON_CANDIDATE_MOVE)
+				continue;
+
 			if (playerToCheck)
 			{
 				if (value > maxValue)

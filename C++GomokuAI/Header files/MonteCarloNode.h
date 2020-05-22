@@ -13,7 +13,7 @@ namespace MonteCarlo
 		// CALL THIS WHENEVER DELETING MONTECARLO TREE NODES
 		void DeleteChildrenExcept(unsigned int exception); // pass -1 to delete all children
 
-		void ExpandChildren(int* actions, torch::Tensor& probs, int size);
+		void ExpandChildren(int* actions, torch::Tensor& probs, int size, char* pCandidateMoves);
 		void DefaultExpandChildren(int* actions, int size);
 		double GetValue(short c_puct, bool bPlayerToSearch);
 		int Select(bool playerToCheck, short c_puct=100);

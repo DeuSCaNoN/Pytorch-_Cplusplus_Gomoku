@@ -39,6 +39,7 @@ public:
 	int* GetLegalMoves(int& size) const;
 	int GetLastMove() const;
 	int GetMovesPlayed() const;
+	char* GetCandidateMoves() const;
 
 	WinnerState_enum GetGameWinState() const;
 private:
@@ -53,6 +54,8 @@ private:
 		std::function<int(int)> indexModifier,
 		std::function<bool(int)> indexCheck) const;
 
+	void AddCandidateMoves_(int moveIndex);
+
 	short m_sideLength;
 	short m_winAmount;
 	int m_boardLength;
@@ -60,6 +63,8 @@ private:
 	char* m_pGameBoard;
 	int m_movesPlayed;
 	int m_lastMovePlayed;
+
+	char* m_pCandidateMoves;
 
 	WinnerState_enum m_winner;
 	bool m_playerTurn;

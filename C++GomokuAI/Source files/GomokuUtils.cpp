@@ -169,12 +169,12 @@ namespace GomokuUtils
 				std::future<std::vector<TrainingExample>> promise2;
 
 				auto pAgentPlayer = std::make_shared<Player::AgentPlayer>(pAgent, 150);
-				PlayGeneratorCfg cfg({ 0, 1, false, true, true, true, pBluPigPlayer, pAgentPlayer, true, BOARD_LENGTH / 2 });
+				PlayGeneratorCfg cfg({ 0, 1, false, false, true, true, pBluPigPlayer, pAgentPlayer, true, BOARD_LENGTH / 2 });
 
 				promise1 = std::async(&GenerateExamplesFromPlay_, cfg, pGame1);
 
 				auto pAgentPlayer2 = std::make_shared<Player::AgentPlayer>(pAgent, 150);
-				PlayGeneratorCfg cfg2({ 0, 1, false, true, true, true, pAgentPlayer2, pBluPigPlayer, true, BOARD_LENGTH / 2 });
+				PlayGeneratorCfg cfg2({ 0, 1, false, false, true, true, pAgentPlayer2, pBluPigPlayer, true, BOARD_LENGTH / 2 });
 
 				promise2 = std::async(&GenerateExamplesFromPlay_, cfg2, pGame2);
 
@@ -205,7 +205,7 @@ namespace GomokuUtils
 		//unsigned supportedGames = std::thread::hardware_concurrency() / 4;
 
 		auto pGame = std::make_shared<GomokuGame>(BOARD_SIDE, BOARD_WIN);
-		auto pAgentPlayer = std::make_shared<Player::AgentPlayer>(pAgent, BOARD_LENGTH);
+		auto pAgentPlayer = std::make_shared<Player::AgentPlayer>(pAgent, 600);
 		unsigned int count = 1;
 		while (true)
 		{
@@ -221,9 +221,6 @@ namespace GomokuUtils
 			
 			if (count == 100)
 			{
-				auto pAgentPlayer = std::make_shared<Player::AgentPlayer>(pAgent, 600);
-				auto pAgentPlayer2 = std::make_shared<Player::AgentPlayer>(pAgent, 600);
-				Evaluate(pAgentPlayer, pAgentPlayer2);
 				std::ifstream src(pAgent->GetModelPath(), std::ios::binary);
 				std::ofstream dst("GomokuModel_Old.pt", std::ios::binary);
 

@@ -322,7 +322,7 @@ namespace MonteCarlo
 
 		torch::Tensor& agentPolicy = pAgent->PredictMove(pGame->GetBoard(), m_gameSpace, pGame->GetLastMove(), pGame->GetPlayerTurn());
 
-		pNode->ExpandChildren(pLegalMoves, agentPolicy, size);
+		pNode->ExpandChildren(pLegalMoves, agentPolicy, size, pGame->GetCandidateMoves());
 	}
 
 	void MonteCarloTreeSearch::DefaultExpandChildren_(
