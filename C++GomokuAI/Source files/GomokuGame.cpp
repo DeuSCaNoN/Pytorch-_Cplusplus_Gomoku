@@ -2,11 +2,6 @@
 #include "GomokuGame.h"
 #include "GomokuUtils.h"
 
-#include <string.h>
-#include <thread>
-#include <future>
-#include <iostream>
-
 /*--------------------------------------------------------------*/
 
 GomokuGame::GomokuGame(short sideLength, short winAmount)

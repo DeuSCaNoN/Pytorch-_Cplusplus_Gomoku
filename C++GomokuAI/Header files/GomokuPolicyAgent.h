@@ -1,10 +1,6 @@
 #pragma once
 
-#include "torch/torch.h"
 #include <FwdDecl.h>
-
-#include <vector>
-#include <string>
 
 struct TrainingExample
 {

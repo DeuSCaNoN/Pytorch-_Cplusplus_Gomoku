@@ -10,5 +10,20 @@
 #define PCH_H
 
 // TODO: add headers that you want to pre-compile here
+#include <stdlib.h>
+#include <time.h>
+#include <math.h>
+#include <string.h>
+#include <math.h>
+
+#include <vector>
+#include <future>
+#include <thread>
+#include <limits>
+#include <iostream>
+#include <fstream>
+#include <exception>
+
+#include <torch/torch.h>
 
 #endif //PCH_H

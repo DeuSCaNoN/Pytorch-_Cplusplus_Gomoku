@@ -5,12 +5,6 @@
 #include "MonteCarloNode.h"
 #include "GomokuGame.h"
 
-#include "torch/torch.h"
-
-#include <stdlib.h>
-#include <thread>
-#include <future>
-#include <vector>
 
 namespace MonteCarlo
 {

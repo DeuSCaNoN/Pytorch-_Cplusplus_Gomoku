@@ -4,9 +4,6 @@
 #include "GomokuUtils.h"
 
 #include "THC/THCCachingHostAllocator.h"
-#include <fstream>
-#include <future>
-#include <exception>
 
 #define BATCH_SIZE 64U
 #define BATCH_VERBOSE_SIZE 3200 // BATCH_SIZE * 50

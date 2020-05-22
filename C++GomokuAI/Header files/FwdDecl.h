@@ -11,6 +11,20 @@ namespace LibTorchAgent
 	class GomokuPolicyAgent;
 }
 
+namespace torch
+{
+	class Tensor;
+	
+	namespace nn
+	{
+		class Module;
+
+		class Conv2d;
+		class Linear;
+		class BatchNorm2d;
+	}
+}
+
 namespace MonteCarlo
 {
 	class MonteCarloTreeSearch;

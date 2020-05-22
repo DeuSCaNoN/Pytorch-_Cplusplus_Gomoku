@@ -1,9 +1,8 @@
 #include "pch.h"
 #include <MonteCarloNode.h>
 
-#include <torch/torch.h>
-#include <math.h>
-#include <limits>
+#define NON_CANDIDATE_MOVE -4444.0
+
 namespace MonteCarlo
 {
 

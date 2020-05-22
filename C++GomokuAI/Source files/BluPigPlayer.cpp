@@ -6,8 +6,6 @@
 
 #include <api/renju_api.h>
 
-#include <iostream>
-
 namespace Player
 {
 	int BluPigPlayer::MakeMove(std::shared_ptr<GomokuGame> pGame, bool bTurn, float* pMoveEstimates)

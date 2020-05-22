@@ -7,15 +7,6 @@
 
 #include <api/renju_api.h>
 #include <ai/eval.h>
-#include <iostream>
-#include <fstream>
-#include <stdlib.h>
-#include <time.h>
-#include <math.h>
-
-#include <vector>
-#include <future>
-#include <thread>
 
 #define MAX_EXAMPLE_SIZE 5000
 
