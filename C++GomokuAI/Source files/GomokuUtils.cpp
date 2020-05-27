@@ -21,7 +21,7 @@ namespace GomokuUtils
 
 	bool GetAllExampleSets_(std::vector<TrainingExample>& outputVector);
 
-	std::vector<TrainingExample> GenerateExamplesFromPlay_(PlayGeneratorCfg const& cfg, std::shared_ptr<GomokuGame> pGame);
+	std::vector<TrainingExample> GenerateExamplesFromPlay_(PlayGeneratorCfg const& cfg, std::shared_ptr<GomokuGame> const& pGame);
 
 	void ConvertToRowCol(
 		int index,
@@ -49,6 +49,9 @@ namespace GomokuUtils
 			system("CLS");
 			GomokuUtils::DrawMatrix(pGame->GetBoard(), BOARD_SIDE);
 
+			if (pGame->GetGameWinState() != WinnerState_enum::None)
+				break;
+
 			int row, col;
 			std::cout << "Row: " << std::endl;
 			std::cin >> row;
@@ -60,6 +63,13 @@ namespace GomokuUtils
 			GomokuUtils::DrawMatrix(pGame->GetBoard(), BOARD_SIDE);
 			pAgentPlayer->MoveMadeInGame(index);
 		}
+
+		if (pGame->GetGameWinState() == WinnerState_enum::P1)
+			std::cout << "P1 won" << std::endl;
+		if (pGame->GetGameWinState() == WinnerState_enum::P2)
+			std::cout << "P2 won" << std::endl;
+		if (pGame->GetGameWinState() == WinnerState_enum::Draw)
+			std::cout << "DRAW" << std::endl;
 	}
 
 	void DrawMatrix(char* matrix, int sideLength)
@@ -158,7 +168,12 @@ namespace GomokuUtils
 		auto pGame1 = std::make_shared<GomokuGame>(BOARD_SIDE, BOARD_WIN);
 		auto pGame2 = std::make_shared<GomokuGame>(BOARD_SIDE, BOARD_WIN);
 
-		while (true)
+		bool bRun = true;
+		std::thread signalThread([&]() {
+			std::cin.get();
+			bRun = !bRun;
+		});
+		while (bRun)
 		{
 			for (unsigned int i = 0; i < 100; i++)
 			{
@@ -195,6 +210,8 @@ namespace GomokuUtils
 
 			dst << src.rdbuf();
 		}
+
+		signalThread.join();
 	}
 
 	void TrainSelfPlay()
@@ -207,7 +224,13 @@ namespace GomokuUtils
 		auto pGame = std::make_shared<GomokuGame>(BOARD_SIDE, BOARD_WIN);
 		auto pAgentPlayer = std::make_shared<Player::AgentPlayer>(pAgent, 600);
 		unsigned int count = 1;
-		while (true)
+
+		bool bRun = true;
+		std::thread signalThread([&]() {
+			std::cin.get();
+			bRun = !bRun;
+		});
+		while (bRun)
 		{
 			pGame->ResetBoard();
 			pAgentPlayer->ClearTree();
@@ -229,6 +252,8 @@ namespace GomokuUtils
 			}
 			exampleSet.clear();
 		}
+
+		signalThread.join();
 	}
 
 	void Evaluate(std::shared_ptr<Player::IPlayer> pAgent1, std::shared_ptr<Player::IPlayer> pAgent2)
@@ -278,7 +303,7 @@ namespace GomokuUtils
 
 	/*------------------------------------------------------------------------------------------------*/
 
-	std::vector<TrainingExample> GenerateExamplesFromPlay_(PlayGeneratorCfg const& cfg, std::shared_ptr<GomokuGame> pGame)
+	std::vector<TrainingExample> GenerateExamplesFromPlay_(PlayGeneratorCfg const& cfg, std::shared_ptr<GomokuGame> const& pGame)
 	{
 		int gameSpace = pGame->GetSideLength() * pGame->GetSideLength();
 		std::vector<TrainingExample> exampleSet(MAX_EXAMPLE_SIZE);
