@@ -6,22 +6,68 @@
 #include "MonteCarloTreeSearch.h"
 #include "GomokuPolicyAgent.h"
 #include "GomokuUtils.h"
+#include "AgentPlayer.h"
 
-#include <iostream>
+void Evaluate()
+{
+	std::shared_ptr<GomokuPolicyAgent> pAgent = std::make_shared<GomokuPolicyAgent>();
+	auto pAgentPlayer = std::make_shared<Player::AgentPlayer>(pAgent, 1000);
+
+	std::shared_ptr<GomokuPolicyAgent> pOldAgent = std::make_shared<GomokuPolicyAgent>("GomokuModel_Old");
+	auto pOldAgentPlayer = std::make_shared<Player::AgentPlayer>(pOldAgent, 1000);
+
+	GomokuUtils::Evaluate(pAgentPlayer, pOldAgentPlayer);
+}
 
 int main()
 {
-	GomokuUtils::TrainSelfPlay();
+	while (true)
+	{
+		std::cout << "1: Self train" << std::endl
+			<< "2: Blupig train" << std::endl
+			<< "3: Human play" << std::endl
+			<< "4: Evaluate against old agent" << std::endl
+			<< "5: Exit" << std::endl
+			<< "Enter number: ";
+		int input;
+		std::cin >> input;
+		while (input < 1 || input > 5)
+		{
+			std::cout << "Error invalid number try again: ";
+			std::cin >> input;
+		}
 
+		system("CLS");
+
+		if (input == 5)
+			break;
+
+		switch (input)
+		{
+		case 1:
+			GomokuUtils::TrainSelfPlay();
+			break;
+		case 2:
+			GomokuUtils::TrainBluPig();
+			break;
+		case 3:
+			GomokuUtils::HumanPlay();
+			break;
+		case 4:
+			Evaluate();
+			break;
+		default:
+			break;
+		}
+	}
 /*	short boardSize = 15;
 	short win = 5;
 
 	std::shared_ptr<GomokuPolicyAgent> pAgent = std::make_shared<GomokuPolicyAgent>();
-//	MonteCarlo::MonteCarloTreeSearch treeSearch((int)(boardSize*boardSize), pAgent, 200);
+	MonteCarlo::MonteCarloTreeSearch treeSearch((int)(boardSize*boardSize), pAgent, 200);
 
 	GomokuGame game = GomokuGame(boardSize, win);
 	game.PlayMove(112);
-	game.PlayMove(0);
 	while (game.GetGameWinState() == WinnerState_enum::None)
 	{
 		int index = treeSearch.GetMove(game);
@@ -36,7 +82,24 @@ int main()
 		treeSearch.StepInTree(index);
 	}
 
-	std::cout << pAgent->PredictValue(game.GetBoard(), 225, 0, true);
+	std::vector<TrainingExample> trainingExamples(2);
+	memcpy(trainingExamples[0].board, game.GetBoard(), 225);
+	memset(trainingExamples[0].pMoveEstimate, 0, BOARD_LENGTH * sizeof(float));
+	trainingExamples[0].pMoveEstimate[96]= 1.0f;
+	trainingExamples[0].boardValue = 0.0f;
+	trainingExamples[0].lastMove = 112;
+
+	game.PlayMove(0);
+	memcpy(trainingExamples[1].board, game.GetBoard(), 225);
+	memset(trainingExamples[1].pMoveEstimate, 0, BOARD_LENGTH*sizeof(float));
+	trainingExamples[1].pMoveEstimate[96] = 1.0f;
+	trainingExamples[1].boardValue = 1.0f;
+	trainingExamples[1].lastMove = 0;
+	
+	pAgent->Train(trainingExamples, 0.2, 20000000);
+
+	std::cout << pAgent->PredictValue(trainingExamples[0].board, 225, 112, false) << std::endl;
+	std::cout << pAgent->PredictValue(trainingExamples[1].board, 225, 0, true) << std::endl;
 */
 	return 0;
 

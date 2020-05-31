@@ -114,7 +114,7 @@ namespace GomokuUtils
 		{
 			bExamplesFound = GetAllExampleSets_(exampleSet);
 		}
-		
+
 		if (!bExamplesFound)
 		{
 			unsigned concurentThreadsSupported = std::thread::hardware_concurrency();
@@ -125,7 +125,7 @@ namespace GomokuUtils
 			for (unsigned short i = 1; i < concurentThreadsSupported; i++)
 			{
 				auto pGame = std::make_shared<GomokuGame>(BOARD_SIDE, BOARD_WIN);
-				PlayGeneratorCfg cfg({i, 500, true, true, true, true, pBluPigPlayer, pBluPigPlayer, false, -1 });
+				PlayGeneratorCfg cfg({ i, 500, true, true, true, true, pBluPigPlayer, pBluPigPlayer, false, -1 });
 				pPromises.push_back(std::async(&GenerateExamplesFromPlay_, cfg, pGame));
 			}
 
@@ -159,7 +159,7 @@ namespace GomokuUtils
 
 	/*------------------------------------------------------------------------------------------------*/
 
-	void TrainBluPig()
+	void TrainBluPig(bool bLoop, short loopCount)
 	{
 		k_trainingLog.open(trainingFilename, std::ofstream::binary);
 		std::shared_ptr<GomokuPolicyAgent> pAgent = std::make_shared<GomokuPolicyAgent>();
@@ -168,53 +168,58 @@ namespace GomokuUtils
 		auto pGame1 = std::make_shared<GomokuGame>(BOARD_SIDE, BOARD_WIN);
 		auto pGame2 = std::make_shared<GomokuGame>(BOARD_SIDE, BOARD_WIN);
 
+		unsigned int count = 1;
 		bool bRun = true;
 		std::thread signalThread([&]() {
-			std::cin.get();
+			std::string exit;
+			std::cin >> exit;
 			bRun = !bRun;
 		});
 		while (bRun)
 		{
-			for (unsigned int i = 0; i < 100; i++)
+			pGame1->ResetBoard();
+			pGame2->ResetBoard();
+			std::future<std::vector<TrainingExample>> promise1;
+			std::future<std::vector<TrainingExample>> promise2;
+
+			auto pAgentPlayer = std::make_shared<Player::AgentPlayer>(pAgent, 1000);
+			PlayGeneratorCfg cfg({ 0, 1, false, false, true, true, pBluPigPlayer, pAgentPlayer, true, BOARD_LENGTH / 2 });
+
+			promise1 = std::async(&GenerateExamplesFromPlay_, cfg, pGame1);
+
+			auto pAgentPlayer2 = std::make_shared<Player::AgentPlayer>(pAgent, 1000);
+			PlayGeneratorCfg cfg2({ 0, 1, false, false, true, true, pAgentPlayer2, pBluPigPlayer, true, BOARD_LENGTH / 2 });
+
+			promise2 = std::async(&GenerateExamplesFromPlay_, cfg2, pGame2);
+
+			std::vector<TrainingExample> subExampleSet = promise1.get();
+			exampleSet.insert(exampleSet.end(), subExampleSet.begin(), subExampleSet.end());
+
+			subExampleSet = promise2.get();
+			exampleSet.insert(exampleSet.end(), subExampleSet.begin(), subExampleSet.end());
+
+			pAgent->Train(exampleSet, 0.02, 5);
+			pAgent->SaveModel();
+
+			if (count == loopCount)
 			{
+				std::ifstream src(pAgent->GetModelPath(), std::ios::binary);
+				std::ofstream dst("GomokuModel_Old.pt", std::ios::binary);
+
+				dst << src.rdbuf();
+				count = 1;
 				exampleSet.clear();
-				pGame1->ResetBoard();
-				pGame2->ResetBoard();
-				std::future<std::vector<TrainingExample>> promise1;
-				std::future<std::vector<TrainingExample>> promise2;
 
-				auto pAgentPlayer = std::make_shared<Player::AgentPlayer>(pAgent, 150);
-				PlayGeneratorCfg cfg({ 0, 1, false, false, true, true, pBluPigPlayer, pAgentPlayer, true, BOARD_LENGTH / 2 });
-
-				promise1 = std::async(&GenerateExamplesFromPlay_, cfg, pGame1);
-
-				auto pAgentPlayer2 = std::make_shared<Player::AgentPlayer>(pAgent, 150);
-				PlayGeneratorCfg cfg2({ 0, 1, false, false, true, true, pAgentPlayer2, pBluPigPlayer, true, BOARD_LENGTH / 2 });
-
-				promise2 = std::async(&GenerateExamplesFromPlay_, cfg2, pGame2);
-
-				std::vector<TrainingExample> subExampleSet = promise1.get();
-				exampleSet.insert(exampleSet.end(), subExampleSet.begin(), subExampleSet.end());
-
-				subExampleSet = promise2.get();
-				exampleSet.insert(exampleSet.end(), subExampleSet.begin(), subExampleSet.end());
-
-				pAgent->Train(exampleSet, 0.2);
-				pAgent->SaveModel();
+				if (!bLoop)
+					break;
 			}
-
-			auto pAgentPlayer = std::make_shared<Player::AgentPlayer>(pAgent, 800);
-			Evaluate(pAgentPlayer, pBluPigPlayer);
-			std::ifstream src(pAgent->GetModelPath(), std::ios::binary);
-			std::ofstream dst("GomokuModel_Old.pt", std::ios::binary);
-
-			dst << src.rdbuf();
+			count++;
 		}
 
 		signalThread.join();
 	}
 
-	void TrainSelfPlay()
+	void TrainSelfPlay(bool bLoop, short loopCount)
 	{
 		std::shared_ptr<GomokuPolicyAgent> pAgent = std::make_shared<GomokuPolicyAgent>();
 		std::vector<TrainingExample> exampleSet;
@@ -227,7 +232,8 @@ namespace GomokuUtils
 
 		bool bRun = true;
 		std::thread signalThread([&]() {
-			std::cin.get();
+			std::string exit;
+			std::cin >> exit;
 			bRun = !bRun;
 		});
 		while (bRun)
@@ -238,22 +244,42 @@ namespace GomokuUtils
 			PlayGeneratorCfg cfg({ 0, 1, false, false, true, true, pAgentPlayer, pAgentPlayer, true, BOARD_LENGTH / 2 });
 			exampleSet = std::move(GenerateExamplesFromPlay_(cfg, pGame));
 
-			pAgent->Train(exampleSet, 0.2);
+			pAgent->Train(exampleSet, 0.02, 5);
 			pAgent->SaveModel();
 			// pAgentPlayer->UpdateModel(pAgent->GetModelPath()); Don't need this yet
-			
-			if (count == 100)
+
+			if (count == loopCount)
 			{
 				std::ifstream src(pAgent->GetModelPath(), std::ios::binary);
 				std::ofstream dst("GomokuModel_Old.pt", std::ios::binary);
 
 				dst << src.rdbuf();
 				count = 1;
+				exampleSet.clear();
+
+				if (!bLoop)
+					break;
 			}
-			exampleSet.clear();
+
+			count++;
 		}
 
 		signalThread.join();
+	}
+
+	void MixedTraining()
+	{
+		bool bLoop = true;
+		std::thread signalThread([&]() {
+			std::string exit;
+			std::cin >> exit;
+			bLoop = !bLoop;
+		});
+		while (bLoop)
+		{
+			TrainBluPig(false, 20);
+			TrainSelfPlay(false, 20);
+		}
 	}
 
 	void Evaluate(std::shared_ptr<Player::IPlayer> pAgent1, std::shared_ptr<Player::IPlayer> pAgent2)

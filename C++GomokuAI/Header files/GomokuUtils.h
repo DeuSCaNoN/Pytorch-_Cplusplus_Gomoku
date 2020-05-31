@@ -12,9 +12,11 @@ namespace GomokuUtils
 
 	void TeachFromValueSet(bool bGenerate = false);
 
-	void TrainSelfPlay();
+	void TrainSelfPlay(bool bLoop = true, short loopCount = 50);
 
-	void TrainBluPig();
+	void TrainBluPig(bool bLoop = true, short loopCount = 100);
+
+	void MixedTraining();
 
 	void Evaluate(std::shared_ptr<Player::IPlayer> pAgent1, std::shared_ptr<Player::IPlayer> pAgent2);
 
