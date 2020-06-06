@@ -28,6 +28,7 @@ public:
 	bool IsBoardFull() const;
 	bool IsMoveWinning(int index) const;
 	bool IsMoveWinning(short row, short col) const;
+	bool WillMoveWin(int index, char symbol);
 
 	bool PlayMove(short row, short col);
 	bool PlayMove(int index);

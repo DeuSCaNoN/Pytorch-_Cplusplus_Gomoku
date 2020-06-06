@@ -57,6 +57,8 @@ public:
 
 	torch::Tensor PredictMove(char* board, int size, int lastMoveIndex, bool bTurn);
 
+	double PredictBoth(char* board, int size, int lastMoveIndex, bool bTurn, torch::Tensor& policy);
+
 	std::string const& GetModelPath() const;
 private:
 

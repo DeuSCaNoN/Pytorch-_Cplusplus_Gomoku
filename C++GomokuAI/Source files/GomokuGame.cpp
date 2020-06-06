@@ -106,6 +106,23 @@ bool GomokuGame::IsMoveWinning(short row, short col) const
 	return IsMoveWinning(ConvertToIndex(row, col, m_sideLength));
 }
 
+bool GomokuGame::WillMoveWin(int index, char symbol)
+{
+	if (index < 0 || index > m_boardLength)
+		return false;
+	else if (m_pGameBoard[index] != _EMPTYSYMBOL_)
+		return false;
+	else if (symbol != _P1SYMBOL_ && symbol != _P2SYMBOL_)
+		return false;
+
+	m_pGameBoard[index] = symbol;
+	bool bBrokeFirstMove = false;
+	bool bWin = IsMoveWinning_(index, bBrokeFirstMove);
+	m_pGameBoard[index] = _EMPTYSYMBOL_;
+
+	return !bBrokeFirstMove && bWin;
+}
+
 char* GomokuGame::GetBoard() const
 {
 	return m_pGameBoard;

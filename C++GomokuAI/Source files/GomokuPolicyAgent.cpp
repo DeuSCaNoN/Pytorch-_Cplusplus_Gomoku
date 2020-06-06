@@ -166,6 +166,19 @@ torch::Tensor GomokuPolicyAgent::PredictMove(char* board, int size, int lastMove
 	return std::move(policyTensor);
 }
 
+double GomokuPolicyAgent::PredictBoth(char* board, int size, int lastMoveIndex, bool bTurn, torch::Tensor& policy)
+{
+	torch::Tensor boardTensor = CreateTensorBoard_(board, size, lastMoveIndex, bTurn).reshape({ 1,4,BOARD_SIDE,BOARD_SIDE });
+	torch::Tensor valueTensor;
+
+	m_pNetworkGpu->forwardBoth(boardTensor.to(torch::kCUDA),
+		policy,
+		valueTensor);
+
+	policy = policy.exp();
+	return valueTensor[0].item<double>();
+}
+
 void GomokuPolicyAgent::Train(std::vector<TrainingExample>& trainingExamples, double learningRate, unsigned int epoch)
 {
 	m_pNetworkGpu->train();

@@ -7,22 +7,22 @@ namespace MonteCarlo
 	class MonteCarloNode
 	{
 	public:
-		MonteCarloNode(MonteCarloNode* parent, double prob, int gameSpace);
+		MonteCarloNode(MonteCarloNode* parent, double prob, int gameSpace, int moveIndex = -1);
 		MonteCarloNode(MonteCarloNode const& other);
 		~MonteCarloNode();
 		// CALL THIS WHENEVER DELETING MONTECARLO TREE NODES
 		void DeleteChildrenExcept(unsigned int exception); // pass -1 to delete all children
 
-		void ExpandChildren(int* actions, torch::Tensor& probs, int size, char* pCandidateMoves);
+		void ExpandChildren(int* actions, torch::Tensor const& probs, int size, char* pCandidateMoves);
 		void DefaultExpandChildren(int* actions, int size);
 		double GetValue(short c_puct, bool bPlayerToSearch);
-		int Select(bool playerToCheck, short c_puct=100);
+		int Select(bool playerToCheck, short c_puct = 5);
 
 		int SelectVisits() const;
 
 		double const GetProbability() const;
 
-		void SelectBestFour(bool playerToCheck, int* indicies, short c_puct = 100);
+		void SelectBest(bool playerToCheck, int* indicies, short const indexSize, short c_puct = 5);
 
 		MonteCarloNode** GetChildren();
 
@@ -47,5 +47,7 @@ namespace MonteCarlo
 		int m_visits;
 		double m_probability;
 		double m_qValue;
+
+		int const m_moveIndexMadeToGetHere;
 	};
 }

@@ -22,15 +22,18 @@ namespace Player
 
 	int AgentPlayer::MakeMove(std::shared_ptr<GomokuGame> pGame, bool bTurn, float* pMoveEstimates)
 	{
-		memset(pMoveEstimates, 0, BOARD_LENGTH);
 		int move = m_pTreeSearch->GetMove(*pGame);
 
-		MonteCarlo::MonteCarloNode** ppChildren = m_pTreeSearch->GetRoot()->GetChildren();
-		for (int i = 0; i < BOARD_LENGTH; i++)
+		if (pMoveEstimates)
 		{
-			if (ppChildren[i] != nullptr)
+			memset(pMoveEstimates, 0, BOARD_LENGTH * sizeof(float));
+			MonteCarlo::MonteCarloNode** ppChildren = m_pTreeSearch->GetRoot()->GetChildren();
+			for (int i = 0; i < BOARD_LENGTH; i++)
 			{
-				pMoveEstimates[i] = (float)ppChildren[i]->GetVisits() / m_pTreeSearch->GetRoot()->GetVisits();
+				if (ppChildren[i] != nullptr)
+				{
+					pMoveEstimates[i] = (float)ppChildren[i]->GetVisits() / m_pTreeSearch->GetRoot()->GetVisits();
+				}
 			}
 		}
 		

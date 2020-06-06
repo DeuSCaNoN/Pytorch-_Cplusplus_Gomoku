@@ -39,11 +39,28 @@ namespace GomokuUtils
 		auto pAgentPlayer = std::make_shared<Player::AgentPlayer>(pAgent, 1500);
 
 		auto pGame = std::make_shared<GomokuGame>(BOARD_SIDE, BOARD_WIN);
+		std::vector<TrainingExample> exampleSet(MAX_EXAMPLE_SIZE);
+		int exampleSize = 0;
+
+//
+
+		exampleSet.clear();
+		exampleSize = 0;
+
+		pGame->ResetBoard();
+		pGame->PlayMove(112);
 
 		while (pGame->GetGameWinState() == WinnerState_enum::None)
 		{
-			float throwAway[BOARD_LENGTH];
-			int index = pAgentPlayer->MakeMove(pGame, pGame->GetPlayerTurn(), throwAway);
+			int index = pAgentPlayer->MakeMove(pGame, pGame->GetPlayerTurn(), exampleSet[exampleSize].pMoveEstimate);
+
+			if (index != BOARD_LENGTH / 2)
+			{
+				memcpy(exampleSet[exampleSize].board, pGame->GetBoard(), BOARD_LENGTH);
+				exampleSet[exampleSize].lastMove = pGame->GetLastMove();
+				exampleSize++;
+			}
+
 			pGame->PlayMove(index);
 			pAgentPlayer->MoveMadeInGame(index);
 			system("CLS");
@@ -58,18 +75,48 @@ namespace GomokuUtils
 			std::cout << "Col: " << std::endl;
 			std::cin >> col;
 			index = ConvertToIndex(row, col, BOARD_SIDE);
+			{
+				memcpy(exampleSet[exampleSize].board, pGame->GetBoard(), BOARD_LENGTH);
+				exampleSet[exampleSize].lastMove = pGame->GetLastMove();
+				memset(exampleSet[exampleSize].pMoveEstimate, 0, BOARD_LENGTH * sizeof(float));
+				exampleSet[exampleSize].pMoveEstimate[index] = 1.0f;
+				exampleSize++;
+			}
+
 			pGame->PlayMove(index);
 			system("CLS");
 			GomokuUtils::DrawMatrix(pGame->GetBoard(), BOARD_SIDE);
 			pAgentPlayer->MoveMadeInGame(index);
 		}
 
+		exampleSet.resize(exampleSize);
+		
+		float maxboardValue = 0.0f;
 		if (pGame->GetGameWinState() == WinnerState_enum::P1)
+		{
+			maxboardValue = 1.0 * 9;
 			std::cout << "P1 won" << std::endl;
-		if (pGame->GetGameWinState() == WinnerState_enum::P2)
+		}
+		else if (pGame->GetGameWinState() == WinnerState_enum::P2)
+		{
+			maxboardValue = -1.0 * 10;
 			std::cout << "P2 won" << std::endl;
-		if (pGame->GetGameWinState() == WinnerState_enum::Draw)
+		}
+		else if (pGame->GetGameWinState() == WinnerState_enum::Draw)
+		{
 			std::cout << "DRAW" << std::endl;
+		}
+
+		float boardValue = maxboardValue / pGame->GetMovesPlayed();
+		float boardValueIncrease = (maxboardValue / abs(maxboardValue) - boardValue) / (exampleSize - 1);
+		for (TrainingExample& boardState : exampleSet)
+		{
+			boardState.boardValue = boardValue;
+			boardValue += boardValueIncrease;
+		}
+
+		pAgent->Train(exampleSet, 0.2, 5);
+		pAgent->SaveModel();
 	}
 
 	void DrawMatrix(char* matrix, int sideLength)
@@ -151,7 +198,7 @@ namespace GomokuUtils
 			}
 		}
 
-		GomokuPolicyAgent agent = GomokuPolicyAgent();
+		GomokuPolicyAgent agent;
 		agent.Train(exampleSet, 0.02);
 
 		agent.SaveModel();
@@ -208,11 +255,11 @@ namespace GomokuUtils
 
 				dst << src.rdbuf();
 				count = 1;
-				exampleSet.clear();
 
 				if (!bLoop)
 					break;
 			}
+			exampleSet.clear();
 			count++;
 		}
 
@@ -227,7 +274,7 @@ namespace GomokuUtils
 		//unsigned supportedGames = std::thread::hardware_concurrency() / 4;
 
 		auto pGame = std::make_shared<GomokuGame>(BOARD_SIDE, BOARD_WIN);
-		auto pAgentPlayer = std::make_shared<Player::AgentPlayer>(pAgent, 600);
+		auto pAgentPlayer = std::make_shared<Player::AgentPlayer>(pAgent, 1500);
 		unsigned int count = 1;
 
 		bool bRun = true;
@@ -255,12 +302,11 @@ namespace GomokuUtils
 
 				dst << src.rdbuf();
 				count = 1;
-				exampleSet.clear();
 
 				if (!bLoop)
 					break;
 			}
-
+			exampleSet.clear();
 			count++;
 		}
 
@@ -431,11 +477,9 @@ namespace GomokuUtils
 			}
 
 			float boardValue = maxboardValue / pGame->GetMovesPlayed();
-			float boardValueIncrease = (maxboardValue / abs(maxboardValue) - boardValue) / (exampleSize - currentGameStart - 1);
 			for (int j = currentGameStart; j < exampleSize; j++)
 			{
 				exampleSet[j].boardValue = boardValue;
-				boardValue += boardValueIncrease;
 			}
 
 			if (exampleSize == MAX_EXAMPLE_SIZE - 1)

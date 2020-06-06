@@ -10,7 +10,6 @@ namespace Player
 {
 	int BluPigPlayer::MakeMove(std::shared_ptr<GomokuGame> pGame, bool bTurn, float* pMoveEstimates)
 	{
-		memset(pMoveEstimates, 0, BOARD_LENGTH);
 		if (pGame->GetMovesPlayed() == 0)
 		{
 			pMoveEstimates[112] = 1.0f;
@@ -30,7 +29,11 @@ namespace Player
 		}
 
 		int moveMade = ConvertToIndex(move_r, move_c, 15);
-		pMoveEstimates[moveMade] = 1.0f;
+		if (pMoveEstimates)
+		{
+			memset(pMoveEstimates, 0, BOARD_LENGTH * sizeof(float));
+			pMoveEstimates[moveMade] = 1.0f;
+		}
 		return moveMade;
 	}
 

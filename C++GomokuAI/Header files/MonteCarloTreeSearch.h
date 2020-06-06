@@ -20,17 +20,20 @@ namespace MonteCarlo
 
 		int GetMove(GomokuGame const& game);
 	private:
+		void DeleteNodes_(int index, MonteCarloNode* pNode);
+
 		void AgentPlayout_(GomokuGame& game);
-		void AgentPlayoutAsync_(GomokuGame& game, MonteCarloNode* pNode, std::shared_ptr<GomokuPolicyAgent> const& pAgent, int visitUpdate);
+		void AgentPlayoutAsync_(GomokuGame& game, MonteCarloNode* pNode, int visitUpdate);
 		void DefaultPlayout_(GomokuGame& game);
+
+		int SearchForEasyWin_(GomokuGame& game);
 
 		double AsyncRollout_(GomokuGame* pGame, int index);
 		double DefaultEvaluateRollout_(GomokuGame const& game);
 
-		void ExpandChildrenPolicyAgent_(MonteCarloNode* pNode, GomokuGame* pGame, std::shared_ptr<GomokuPolicyAgent> const& pAgent);
-		void DefaultExpandChildren_(MonteCarloNode* pNode, GomokuGame* pGame, std::shared_ptr<GomokuPolicyAgent> const& pAgent);
+		void ExpandChildrenPolicyAgent_(MonteCarloNode* pNode, GomokuGame* pGame);
+		void DefaultExpandChildren_(MonteCarloNode* pNode, GomokuGame* pGame);
 
-		std::function<void(MonteCarloNode*, GomokuGame*, std::shared_ptr<GomokuPolicyAgent> const&)> m_expandChildrenFn;
 		std::function<void(GomokuGame&)> m_playoutGameFn;
 
 		MonteCarloNode* m_pRoot;
@@ -38,5 +41,8 @@ namespace MonteCarlo
 		int m_gameSpace;
 
 		std::shared_ptr<GomokuPolicyAgent> m_pAgent;
+
+		std::thread m_deleteThread;
+		bool m_bEasyWinFound;
 	};
 }

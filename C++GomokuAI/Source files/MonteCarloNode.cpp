@@ -6,7 +6,7 @@
 namespace MonteCarlo
 {
 
-	MonteCarloNode::MonteCarloNode(MonteCarloNode* pParent, double prob, int gameSpace)
+	MonteCarloNode::MonteCarloNode(MonteCarloNode* pParent, double prob, int gameSpace, int moveIndex)
 		: m_visits(1)
 		, m_probability(prob)
 		, m_qValue(0.0f)
@@ -14,6 +14,7 @@ namespace MonteCarlo
 		, m_childrenSize(0)
 		, m_pParent(pParent)
 		, bChildrenInitialized(false)
+		, m_moveIndexMadeToGetHere(moveIndex)
 	{
 		m_ppChildren = new MonteCarloNode*[m_gameSpace];
 		for (int i = 0; i < m_gameSpace; i++)
@@ -23,6 +24,7 @@ namespace MonteCarlo
 	}
 
 	MonteCarloNode::MonteCarloNode(MonteCarloNode const& other)
+		: m_moveIndexMadeToGetHere(other.m_moveIndexMadeToGetHere)
 	{
 		m_pParent = other.m_pParent;
 		m_ppChildren = other.m_ppChildren;
@@ -60,9 +62,9 @@ namespace MonteCarlo
 
 	/*--------------------------------------------------------------*/
 
-	void MonteCarloNode::ExpandChildren(int* actions, torch::Tensor& probs, int size, char* pCandidateMoves)
+	void MonteCarloNode::ExpandChildren(int* actions, torch::Tensor const& probs, int size, char* pCandidateMoves)
 	{
-		probs = probs.to(torch::kCPU);
+		torch::Tensor cpuProbs = probs.to(torch::kCPU);
 
 		for (int i = 0; i < size; i++)
 		{
@@ -73,10 +75,10 @@ namespace MonteCarlo
 				double probability = -1.0;
 				if (pCandidateMoves[index] != 0)
 				{
-					probability = probs[0][index].item<float>() * (0.15 / size); // priors probability + Dirichlet noise
+					probability = cpuProbs[0][index].item<float>() * (0.15 / size); // priors probability + Dirichlet noise
 				}
 				
-				m_ppChildren[index] = new MonteCarloNode(this, probability, m_gameSpace);
+				m_ppChildren[index] = new MonteCarloNode(this, probability, m_gameSpace, index);
 				m_childrenSize++;
 			}
 		}
@@ -91,7 +93,7 @@ namespace MonteCarlo
 			double probability = 1 / size;
 			if (!m_ppChildren[index])
 			{
-				m_ppChildren[index] = new MonteCarloNode(this, probability, m_gameSpace);
+				m_ppChildren[index] = new MonteCarloNode(this, probability, m_gameSpace, index);
 				m_childrenSize++;
 			}
 		}
@@ -103,7 +105,7 @@ namespace MonteCarlo
 		if (m_probability < 0)
 			return NON_CANDIDATE_MOVE;
 
-		float selectValue = c_puct * m_probability * sqrt(m_pParent->GetVisits()) / m_visits;
+		double selectValue = c_puct * m_probability * sqrt(m_pParent->GetVisits()) / m_visits;
 		if (!bPlayerToSearch)
 			selectValue = -selectValue;
 		return (m_qValue / m_visits) + selectValue;
@@ -190,69 +192,52 @@ namespace MonteCarlo
 		return index;
 	}
 
-	void MonteCarloNode::SelectBestFour(bool playerToCheck, int* indicies, short c_puct)
+	void MonteCarloNode::SelectBest(bool playerToCheck, int* indicies, short const indexSize, short c_puct)
 	{
-		float maxValue = playerToCheck ? -1000.0f : DBL_MAX;
-		indicies[0] = -1;
-		indicies[1] = -1;
-		indicies[2] = -1;
-		indicies[3] = -1;
+		double maxValue = playerToCheck ? -1000.0f : DBL_MAX;
+		memset(indicies, -1, indexSize * sizeof(int));
 
-		int offset = m_gameSpace / 3;
+		int* pLeastLocation = indicies;
 
-		int* pIndex1 = indicies;
-		int* pIndex2 = &indicies[1];
-		int* pIndex3 = &indicies[2];
-		int* pIndex4 = &indicies[3];
 		int itemPushed = 0;
 		for (int i = 0; i < m_gameSpace; i++)
 		{
-			int indexToTest = (i + offset) % m_gameSpace;
-			if (m_ppChildren[indexToTest] == nullptr)
+			if (m_ppChildren[i] == nullptr)
 				continue;
 
-			float currentValue = m_ppChildren[indexToTest]->GetValue(c_puct, playerToCheck);
+			double currentValue = m_ppChildren[i]->GetValue(c_puct, playerToCheck);
+			if (currentValue == NON_CANDIDATE_MOVE)
+				continue;
+
 			if (playerToCheck && (currentValue > maxValue) ||
 				!playerToCheck && (currentValue < maxValue))
 			{
-				int* pTemp = pIndex4;
-				pIndex4 = pIndex3;
-				pIndex3 = pIndex2;
-				pIndex2 = pIndex1;
-				pIndex1 = pTemp;
-				*pIndex1 = indexToTest;
+				*pLeastLocation = i;
 				maxValue = currentValue;
+
+				if (pLeastLocation == indicies)
+					pLeastLocation = &indicies[indexSize - 1];
+				else
+					pLeastLocation -= 1;
 
 				++itemPushed;
 			}
-			else if (itemPushed < 4)
+			else if (itemPushed < indexSize)
 			{
-				switch (itemPushed)
-				{
-				case 0:
-					*pIndex1 = indexToTest;
-					break;
-				case 1:
-					*pIndex2 = indexToTest;
-					break;
-				case 2:
-					*pIndex3 = indexToTest;
-					break;
-				case 3:
-					*pIndex4 = indexToTest;
-					break;
-				default:
-					break;
-				}
+				*pLeastLocation = i;
+				if (pLeastLocation == indicies)
+					pLeastLocation = &indicies[indexSize - 1];
+				else
+					pLeastLocation -= 1;
 				++itemPushed;
 			}
 		}
 
-		if (pIndex1 != indicies)
+		if (pLeastLocation != &indicies[indexSize - 1])
 		{
 			int temp = indicies[0];
-			indicies[0] = *pIndex1;
-			*pIndex1 = temp;
+			indicies[0] = *(pLeastLocation + 1);
+			*(pLeastLocation + 1) = temp;
 		}
 	}
 
