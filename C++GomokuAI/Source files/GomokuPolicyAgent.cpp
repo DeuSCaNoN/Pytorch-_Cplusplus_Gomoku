@@ -8,6 +8,7 @@
 #define BATCH_SIZE 64U
 #define BATCH_VERBOSE_SIZE 3200 // BATCH_SIZE * 50
 #define CONV_2D_FILTER_SIZE 256
+#define BATCH_QUEUE_SIZE 32
 
 /*--------------------------------------------------------------*/
 
@@ -117,6 +118,8 @@ void Net::train(bool on)
 /*--------------------------------------------------------------*/
 
 GomokuPolicyAgent::GomokuPolicyAgent(std::string const& modelPath)
+	: m_requestEnd(0)
+	, m_bShutdown(false)
 {
 	m_pNetworkGpu = std::make_shared<Net>();
 
@@ -129,11 +132,21 @@ GomokuPolicyAgent::GomokuPolicyAgent(std::string const& modelPath)
 
 	m_pNetworkGpu->to(torch::kCUDA);
 	m_pNetworkGpu->eval();
+
+	m_pRequestQueue = (TrainingRequest*)malloc(BATCH_QUEUE_SIZE * sizeof(TrainingRequest));
+	m_workerThread = std::thread(&GomokuPolicyAgent::ProcessQueue_, this);
 }
 
 GomokuPolicyAgent::~GomokuPolicyAgent()
 {
 	THCCachingHostAllocator_emptyCache();
+	free(m_pRequestQueue);
+	if (m_gpuThread.joinable())
+		m_gpuThread.join();
+
+	m_bShutdown = true;
+	if (m_workerThread.joinable())
+		m_workerThread.join();
 }
 
 /*--------------------------------------------------------------*/
@@ -163,20 +176,30 @@ torch::Tensor GomokuPolicyAgent::PredictMove(char* board, int size, int lastMove
 	torch::Tensor boardTensor = CreateTensorBoard_(board, size, lastMoveIndex, bTurn).reshape({ 1,4,BOARD_SIDE,BOARD_SIDE }).to(torch::kCUDA);
 	torch::Tensor policyTensor = m_pNetworkGpu->forwadPolicy(boardTensor).exp();
 
-	return std::move(policyTensor);
+	return std::move(policyTensor[0]);
 }
 
-double GomokuPolicyAgent::PredictBoth(char* board, int size, int lastMoveIndex, bool bTurn, torch::Tensor& policy)
+void GomokuPolicyAgent::PredictBoth(char* board, int size, int lastMoveIndex, bool bTurn, pPredictCbFnPtr_t pFnCb)
 {
-	torch::Tensor boardTensor = CreateTensorBoard_(board, size, lastMoveIndex, bTurn).reshape({ 1,4,BOARD_SIDE,BOARD_SIDE });
-	torch::Tensor valueTensor;
+	std::lock_guard<std::mutex>* pGuard;
+	while (true)
+	{
+		pGuard = new std::lock_guard<std::mutex>(m_queueLock);
+		if (m_requestEnd < BATCH_QUEUE_SIZE)
+			break;
 
-	m_pNetworkGpu->forwardBoth(boardTensor.to(torch::kCUDA),
-		policy,
-		valueTensor);
+		delete pGuard;
+		std::this_thread::sleep_for(std::chrono::milliseconds(5));
+	}
 
-	policy = policy.exp();
-	return valueTensor[0].item<double>();
+	memcpy(m_pRequestQueue[m_requestEnd].board, board, BOARD_LENGTH);
+	m_pRequestQueue[m_requestEnd].size = size;
+	m_pRequestQueue[m_requestEnd].lastMove = lastMoveIndex;
+	m_pRequestQueue[m_requestEnd].bTurn = bTurn;
+	m_pRequestQueue[m_requestEnd].pCbFn = pFnCb;
+	m_requestEnd++;
+
+	delete pGuard;
 }
 
 void GomokuPolicyAgent::Train(std::deque<TrainingExample>& trainingExamples, double learningRate, unsigned int epoch)
@@ -282,6 +305,68 @@ std::string const& GomokuPolicyAgent::GetModelPath() const
 
 /*--------------------------------------------------------------*/
 
+void GomokuPolicyAgent::ProcessQueue_()
+{
+	while (!m_bShutdown)
+	{
+		if (m_requestEnd == 0)
+		{
+			std::this_thread::sleep_for(std::chrono::milliseconds(2));
+			continue;
+		}
+		int queueSize;
+		TrainingRequest* pQueueCopy;
+
+		{
+			std::lock_guard<std::mutex> guard(m_queueLock);
+			queueSize = m_requestEnd;
+			pQueueCopy = (TrainingRequest*)malloc(queueSize * sizeof(TrainingRequest));
+			memcpy(pQueueCopy, m_pRequestQueue, queueSize * sizeof(TrainingRequest));
+			m_requestEnd = 0;
+		}
+
+		torch::Tensor batchInputTensor = torch::zeros({ queueSize, 4, BOARD_SIDE, BOARD_SIDE });
+		std::vector<pPredictCbFnPtr_t> callbacks;
+		callbacks.reserve(queueSize);
+		for (int i = 0; i < queueSize; i++)
+		{
+			batchInputTensor[i] = CreateTensorBoard_(
+				pQueueCopy[i].board,
+				pQueueCopy[i].size,
+				pQueueCopy[i].lastMove,
+				pQueueCopy[i].bTurn);
+			callbacks.push_back(pQueueCopy[i].pCbFn);
+		}
+
+		if (m_gpuThread.joinable())
+			m_gpuThread.join();
+
+		m_gpuThread = std::thread(&GomokuPolicyAgent::SendToGpu_, this, std::move(batchInputTensor), std::move(callbacks));
+		free(pQueueCopy);
+	}
+}
+
+void GomokuPolicyAgent::SendToGpu_(torch::Tensor const& inputTensor, std::vector<pPredictCbFnPtr_t> const& callbacks)
+{
+	torch::Tensor policy;
+	torch::Tensor valueTensor;
+
+	m_pNetworkGpu->forwardBoth(inputTensor.to(torch::kCUDA),
+		policy,
+		valueTensor);
+	policy = policy.exp();
+
+	for (int i = 0; i < callbacks.size(); i++)
+	{
+		if (!callbacks[i])
+		{
+			std::cout << "ERROR ERROR Cb Fn ptr could not be locked" << std::endl;
+			continue;
+		}
+		(*callbacks[i])(std::move(policy[i]), valueTensor[i].item<double>());
+	}
+}
+
 torch::Tensor GomokuPolicyAgent::CreateTensorBoard_(char* board, int size, int lastMoveIndex, bool bTurn)
 {
 	torch::Tensor finalTensor = torch::zeros({ 4, BOARD_SIDE, BOARD_SIDE });
@@ -335,7 +420,7 @@ float GomokuPolicyAgent::TrainGpuAsync_(
 
 //	std::cout << valueLoss << std::endl;
 
-	torch::Tensor lossTensor = (valueLoss + policyLoss).mean();
+	torch::Tensor lossTensor = (valueLoss + (policyLoss * 0.5)).mean();
 
 	lossTensor.backward();
 	optimizer.step();

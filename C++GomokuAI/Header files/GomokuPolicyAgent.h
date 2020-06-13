@@ -10,6 +10,15 @@ struct TrainingExample
 	int lastMove;
 };
 
+struct TrainingRequest
+{
+	char board[BOARD_LENGTH];
+	int size;
+	int lastMove;
+	bool bTurn;
+	pPredictCbFnPtr_t pCbFn;
+};
+
 // Define a new Module.
 struct Net : torch::nn::Module
 {
@@ -57,10 +66,13 @@ public:
 
 	torch::Tensor PredictMove(char* board, int size, int lastMoveIndex, bool bTurn);
 
-	double PredictBoth(char* board, int size, int lastMoveIndex, bool bTurn, torch::Tensor& policy);
+	void PredictBoth(char* board, int size, int lastMoveIndex, bool bTurn, pPredictCbFnPtr_t pFnCb);
 
 	std::string const& GetModelPath() const;
 private:
+
+	void ProcessQueue_();
+	void SendToGpu_(torch::Tensor const& inputTensor, std::vector<pPredictCbFnPtr_t> const& callbacks);
 
 	torch::Tensor CreateTensorBoard_(char* board, int size, int lastMoveIndex, bool bTurn);
 
@@ -72,5 +84,13 @@ private:
 
 	std::shared_ptr<Net> m_pNetworkGpu;
 
+	TrainingRequest* m_pRequestQueue;
+	short m_requestEnd;
+	std::mutex m_queueLock;
+	std::thread m_workerThread;
+	std::thread m_gpuThread;
+
 	std::string m_modelPath;
+
+	bool m_bShutdown;
 };

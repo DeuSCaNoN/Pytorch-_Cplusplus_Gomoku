@@ -187,13 +187,24 @@ namespace MonteCarlo
 			return;
 		}
 
-		torch::Tensor policy;
-		double value = m_pAgent->PredictBoth(game.GetBoard(), m_gameSpace, game.GetLastMove(), game.GetPlayerTurn(), policy);
+		std::promise<torch::Tensor> policyPromise;
+		std::promise<double> valuePromise;
+		auto policyFuture = policyPromise.get_future();
+		auto valueFuture = valuePromise.get_future();
+		auto fn = std::function<void(torch::Tensor const&, double)>(
+			[&policyPromise, &valuePromise](torch::Tensor const& policy, double value)
+		{
+			policyPromise.set_value(policy);
+			valuePromise.set_value(value);
+		});
+
+		m_pAgent->PredictBoth(game.GetBoard(), m_gameSpace, game.GetLastMove(), game.GetPlayerTurn(), &fn);
 		int size = 0;
 		int* pLegalMoves = game.GetLegalMoves(size);
 
+		torch::Tensor const& policy = policyFuture.get();
 		auto thread = std::thread(&MonteCarloNode::ExpandChildren, pNode, pLegalMoves, policy, size, game.GetCandidateMoves());
-		pNode->RecursiveUpdate(value);
+		pNode->RecursiveUpdate(valueFuture.get());
 
 		thread.join();
 	}

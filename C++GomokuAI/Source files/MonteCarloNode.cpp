@@ -75,7 +75,7 @@ namespace MonteCarlo
 				double probability = -1.0;
 				if (pCandidateMoves[index] != 0)
 				{
-					probability = cpuProbs[0][index].item<float>() * (0.15 / size); // priors probability + Dirichlet noise
+					probability = cpuProbs[index].item<float>() * (0.15 / size); // priors probability + Dirichlet noise
 				}
 				
 				m_ppChildren[index] = new MonteCarloNode(this, probability, m_gameSpace, index);

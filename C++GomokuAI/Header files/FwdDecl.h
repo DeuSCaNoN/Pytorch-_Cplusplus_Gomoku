@@ -25,6 +25,8 @@ namespace torch
 	}
 }
 
+typedef std::function<void(torch::Tensor const&, double)>* pPredictCbFnPtr_t;
+
 namespace MonteCarlo
 {
 	class MonteCarloTreeSearch;
