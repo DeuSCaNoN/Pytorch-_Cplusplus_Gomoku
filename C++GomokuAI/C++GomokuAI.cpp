@@ -19,19 +19,36 @@ void Evaluate()
 	GomokuUtils::Evaluate(pAgentPlayer, pOldAgentPlayer);
 }
 
-int main()
+void HumanSelection()
+{
+	std::cout << "1: Human P1" << std::endl
+		<< "2: Human P2 " << std::endl
+		<< "Enter number: ";
+	int input;
+	std::cin >> input;
+	while (input < 1 || input > 2)
+	{
+		std::cout << "Error invalid number try again: ";
+		std::cin >> input;
+	}
+
+	GomokuUtils::HumanPlay(input == 1);
+}
+
+void StartGomokuTraining()
 {
 	while (true)
 	{
 		std::cout << "1: Self train" << std::endl
 			<< "2: Blupig train" << std::endl
 			<< "3: Human play" << std::endl
-			<< "4: Evaluate against old agent" << std::endl
-			<< "5: Exit" << std::endl
+			<< "4: Mixed Self blupig" << std::endl
+			<< "5: Evaluate against old agent" << std::endl
+			<< "6: Exit" << std::endl
 			<< "Enter number: ";
 		int input;
 		std::cin >> input;
-		while (input < 1 || input > 5)
+		while (input < 1 || input > 6)
 		{
 			std::cout << "Error invalid number try again: ";
 			std::cin >> input;
@@ -39,7 +56,7 @@ int main()
 
 		system("CLS");
 
-		if (input == 5)
+		if (input == 6)
 			break;
 
 		switch (input)
@@ -51,15 +68,24 @@ int main()
 			GomokuUtils::TrainBluPig();
 			break;
 		case 3:
-			GomokuUtils::HumanPlay();
+			HumanSelection();
 			break;
 		case 4:
+			GomokuUtils::MixedTraining();
+			break;
+		case 5:
 			Evaluate();
 			break;
 		default:
 			break;
 		}
 	}
+}
+
+int main()
+{
+	StartGomokuTraining();
+
 /*	short boardSize = 15;
 	short win = 5;
 

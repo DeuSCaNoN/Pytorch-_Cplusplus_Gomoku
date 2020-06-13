@@ -8,13 +8,13 @@ namespace GomokuUtils
 {
 	void ConvertToRowCol(int index, int sideLength, short& row, short& col);
 
-	void HumanPlay();
+	void HumanPlay(bool bHumanSide);
 
 	void TeachFromValueSet(bool bGenerate = false);
 
-	void TrainSelfPlay(bool bLoop = true, short loopCount = 50);
+	void TrainSelfPlay(bool bLoop = true, short loopCount = 30);
 
-	void TrainBluPig(bool bLoop = true, short loopCount = 100);
+	void TrainBluPig(bool bLoop = true, short loopCount = 30);
 
 	void MixedTraining();
 
