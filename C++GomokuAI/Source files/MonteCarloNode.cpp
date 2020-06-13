@@ -138,7 +138,7 @@ namespace MonteCarlo
 	int MonteCarloNode::Select(bool playerToCheck, short c_puct)
 	{
 		int index = -1;
-		double maxValue = playerToCheck ? -500 : DBL_MAX;
+		double maxValue = playerToCheck ? -1000 : DBL_MAX;
 		for (int i = 0; i < m_gameSpace; i++)
 		{
 			if (m_ppChildren[i] == nullptr)

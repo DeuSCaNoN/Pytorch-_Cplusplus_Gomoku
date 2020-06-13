@@ -13,7 +13,7 @@ void Evaluate()
 	std::shared_ptr<GomokuPolicyAgent> pAgent = std::make_shared<GomokuPolicyAgent>();
 	auto pAgentPlayer = std::make_shared<Player::AgentPlayer>(pAgent, 1000);
 
-	std::shared_ptr<GomokuPolicyAgent> pOldAgent = std::make_shared<GomokuPolicyAgent>("GomokuModel_Old");
+	std::shared_ptr<GomokuPolicyAgent> pOldAgent = std::make_shared<GomokuPolicyAgent>("GomokuModel_Old.pt");
 	auto pOldAgentPlayer = std::make_shared<Player::AgentPlayer>(pOldAgent, 1000);
 
 	GomokuUtils::Evaluate(pAgentPlayer, pOldAgentPlayer);

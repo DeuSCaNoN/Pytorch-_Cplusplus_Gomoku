@@ -16,13 +16,13 @@ namespace GomokuUtils
 	std::string trainingFilename = "TrainingLog.log";
 	std::ofstream k_trainingLog;
 
-	void WriteExampleSetToFile_(std::vector<TrainingExample> exampleSet, short fileNameNum);
+	void WriteExampleSetToFile_(std::deque<TrainingExample> exampleSet, short fileNameNum);
 
-	std::vector<TrainingExample> GetExampleSetFromFile_(short fileNameNum);
+	std::deque<TrainingExample> GetExampleSetFromFile_(short fileNameNum);
 
-	bool GetAllExampleSets_(std::vector<TrainingExample>& outputVector);
+	bool GetAllExampleSets_(std::deque<TrainingExample>& outputVector);
 
-	std::vector<TrainingExample> GenerateExamplesFromPlay_(PlayGeneratorCfg const& cfg, std::shared_ptr<GomokuGame> const& pGame);
+	std::deque<TrainingExample> GenerateExamplesFromPlay_(PlayGeneratorCfg const& cfg, std::shared_ptr<GomokuGame> const& pGame);
 
 	void ConvertToRowCol(
 		int index,
@@ -39,7 +39,7 @@ namespace GomokuUtils
 		std::shared_ptr<GomokuPolicyAgent> pAgent = std::make_shared<GomokuPolicyAgent>();
 
 		auto pGame = std::make_shared<GomokuGame>(BOARD_SIDE, BOARD_WIN);
-		std::vector<TrainingExample> exampleSet(MAX_EXAMPLE_SIZE);
+		std::deque<TrainingExample> exampleSet(MAX_EXAMPLE_SIZE);
 		int exampleSize = 0;
 
 		std::shared_ptr<Player::IPlayer> pPlayer1;
@@ -155,7 +155,7 @@ namespace GomokuUtils
 
 	void TeachFromValueSet(bool bGenerate)
 	{
-		std::vector<TrainingExample> exampleSet;
+		std::deque<TrainingExample> exampleSet;
 		bool bExamplesFound = false;
 		if (!bGenerate)
 		{
@@ -165,7 +165,7 @@ namespace GomokuUtils
 		if (!bExamplesFound)
 		{
 			unsigned concurentThreadsSupported = std::thread::hardware_concurrency();
-			std::vector<std::future<std::vector<TrainingExample>>> pPromises;
+			std::vector<std::future<std::deque<TrainingExample>>> pPromises;
 			pPromises.reserve(concurentThreadsSupported - 1);
 			auto pBluPigPlayer = std::make_shared<Player::BluPigPlayer>();
 
@@ -185,7 +185,7 @@ namespace GomokuUtils
 			threads.reserve(pPromises.size());
 			for (int i = 0; i < pPromises.size(); i++)
 			{
-				std::vector<TrainingExample> subExampleSet = pPromises[i].get();
+				std::deque<TrainingExample> subExampleSet = pPromises[i].get();
 				auto thread = std::thread(WriteExampleSetToFile_, subExampleSet, i);
 				threads.push_back(std::move(thread));
 
@@ -211,23 +211,26 @@ namespace GomokuUtils
 		k_trainingLog.open(trainingFilename, std::ofstream::binary);
 		std::shared_ptr<GomokuPolicyAgent> pAgent = std::make_shared<GomokuPolicyAgent>();
 		auto pBluPigPlayer = std::make_shared<Player::BluPigPlayer>();
-		std::vector<TrainingExample> exampleSet;
+		std::deque<TrainingExample> exampleSet;
 		auto pGame1 = std::make_shared<GomokuGame>(BOARD_SIDE, BOARD_WIN);
 		auto pGame2 = std::make_shared<GomokuGame>(BOARD_SIDE, BOARD_WIN);
 
 		unsigned int count = 1;
 		bool bRun = true;
 		std::thread signalThread([&]() {
-			std::string exit;
-			std::cin >> exit;
-			bRun = !bRun;
+			if (bLoop)
+			{
+				std::string exit;
+				std::cin >> exit;
+				bRun = !bRun;
+			}
 		});
 		while (bRun)
 		{
 			pGame1->ResetBoard();
 			pGame2->ResetBoard();
-			std::future<std::vector<TrainingExample>> promise1;
-			std::future<std::vector<TrainingExample>> promise2;
+			std::future<std::deque<TrainingExample>> promise1;
+			std::future<std::deque<TrainingExample>> promise2;
 
 			auto pAgentPlayer = std::make_shared<Player::AgentPlayer>(pAgent, 1000);
 			PlayGeneratorCfg cfg({ 0, 1, false, false, true, true, pBluPigPlayer, pAgentPlayer, true, BOARD_LENGTH / 2 });
@@ -239,13 +242,20 @@ namespace GomokuUtils
 
 			promise2 = std::async(&GenerateExamplesFromPlay_, cfg2, pGame2);
 
-			std::vector<TrainingExample> subExampleSet = promise1.get();
+			std::deque<TrainingExample> subExampleSet = promise1.get();
+			std::random_shuffle(subExampleSet.begin(), subExampleSet.end());
 			exampleSet.insert(exampleSet.end(), subExampleSet.begin(), subExampleSet.end());
 
 			subExampleSet = promise2.get();
+			std::random_shuffle(subExampleSet.begin(), subExampleSet.end());
 			exampleSet.insert(exampleSet.end(), subExampleSet.begin(), subExampleSet.end());
 
-			pAgent->Train(exampleSet, 0.02, 5);
+			while (exampleSet.size() > 200)
+			{
+				exampleSet.pop_front();
+			}
+
+			pAgent->Train(exampleSet, 0.02, 3);
 			pAgent->SaveModel();
 
 			if (count == loopCount)
@@ -258,8 +268,10 @@ namespace GomokuUtils
 
 				if (!bLoop)
 					break;
+
+				exampleSet.clear();
 			}
-			exampleSet.clear();
+			
 			count++;
 		}
 
@@ -269,19 +281,22 @@ namespace GomokuUtils
 	void TrainSelfPlay(bool bLoop, short loopCount)
 	{
 		std::shared_ptr<GomokuPolicyAgent> pAgent = std::make_shared<GomokuPolicyAgent>();
-		std::vector<TrainingExample> exampleSet;
+		std::deque<TrainingExample> exampleSet;
 
 		//unsigned supportedGames = std::thread::hardware_concurrency() / 4;
 
 		auto pGame = std::make_shared<GomokuGame>(BOARD_SIDE, BOARD_WIN);
-		auto pAgentPlayer = std::make_shared<Player::AgentPlayer>(pAgent, 1500);
+		auto pAgentPlayer = std::make_shared<Player::AgentPlayer>(pAgent, 400);
 		unsigned int count = 1;
 
 		bool bRun = true;
 		std::thread signalThread([&]() {
-			std::string exit;
-			std::cin >> exit;
-			bRun = !bRun;
+			if (bLoop)
+			{
+				std::string exit;
+				std::cin >> exit;
+				bRun = !bRun;
+			}
 		});
 		while (bRun)
 		{
@@ -289,9 +304,15 @@ namespace GomokuUtils
 			pAgentPlayer->ClearTree();
 
 			PlayGeneratorCfg cfg({ 0, 1, false, false, true, true, pAgentPlayer, pAgentPlayer, true, BOARD_LENGTH / 2 });
-			exampleSet = std::move(GenerateExamplesFromPlay_(cfg, pGame));
+			std::deque<TrainingExample> subExampleSet = std::move(GenerateExamplesFromPlay_(cfg, pGame));
+			exampleSet.insert(exampleSet.end(), subExampleSet.begin(), subExampleSet.end());
+			std::random_shuffle(exampleSet.begin(), exampleSet.end());
+			while (exampleSet.size() > 200)
+			{
+				exampleSet.pop_front();
+			}
 
-			pAgent->Train(exampleSet, 0.02, 5);
+			pAgent->Train(exampleSet, 0.2, 3);
 			pAgent->SaveModel();
 			// pAgentPlayer->UpdateModel(pAgent->GetModelPath()); Don't need this yet
 
@@ -302,11 +323,10 @@ namespace GomokuUtils
 
 				dst << src.rdbuf();
 				count = 1;
-
+				exampleSet.clear();
 				if (!bLoop)
 					break;
 			}
-			exampleSet.clear();
 			count++;
 		}
 
@@ -323,7 +343,9 @@ namespace GomokuUtils
 		});
 		while (bLoop)
 		{
-			TrainBluPig(false, 20);
+			std::cout << "BluPig Train" << std::endl;
+			TrainBluPig(false, 7);
+			std::cout << "Self Train" << std::endl;
 			TrainSelfPlay(false, 20);
 		}
 	}
@@ -332,11 +354,11 @@ namespace GomokuUtils
 	{
 		std::cout << "Evaluating" << std::endl;
 		k_trainingLog << "Evaluating" << std::endl;
-		std::future<std::vector<TrainingExample>> game1Promise;
+		std::future<std::deque<TrainingExample>> game1Promise;
 
 		auto pGame = std::make_shared<GomokuGame>(BOARD_SIDE, BOARD_WIN);
 		PlayGeneratorCfg cfg({ 0, 1, false, false, true, true, pAgent1, pAgent2, true, -1 });
-		std::vector<TrainingExample> subExampleSet = GenerateExamplesFromPlay_(cfg, pGame);
+		std::deque<TrainingExample> subExampleSet = GenerateExamplesFromPlay_(cfg, pGame);
 
 		switch (pGame->GetGameWinState())
 		{
@@ -375,10 +397,10 @@ namespace GomokuUtils
 
 	/*------------------------------------------------------------------------------------------------*/
 
-	std::vector<TrainingExample> GenerateExamplesFromPlay_(PlayGeneratorCfg const& cfg, std::shared_ptr<GomokuGame> const& pGame)
+	std::deque<TrainingExample> GenerateExamplesFromPlay_(PlayGeneratorCfg const& cfg, std::shared_ptr<GomokuGame> const& pGame)
 	{
 		int gameSpace = pGame->GetSideLength() * pGame->GetSideLength();
-		std::vector<TrainingExample> exampleSet(MAX_EXAMPLE_SIZE);
+		std::deque<TrainingExample> exampleSet(MAX_EXAMPLE_SIZE);
 		int exampleSize = 0;
 		srand((unsigned int)time(NULL) + cfg.seed);
 
@@ -496,7 +518,7 @@ namespace GomokuUtils
 		return exampleSet;
 	}
 
-	void WriteExampleSetToFile_(std::vector<TrainingExample> exampleSet, short fileNameNum)
+	void WriteExampleSetToFile_(std::deque<TrainingExample> exampleSet, short fileNameNum)
 	{
 		std::string fileName = "valueDataset" + std::to_string(fileNameNum) + ".bin";
 		std::ofstream exampleFile;
@@ -509,13 +531,12 @@ namespace GomokuUtils
 		}
 	}
 
-	std::vector<TrainingExample> GetExampleSetFromFile_(short fileNameNum)
+	std::deque<TrainingExample> GetExampleSetFromFile_(short fileNameNum)
 	{
 		std::string fileName = "valueDataset" + std::to_string(fileNameNum) + ".bin";
-		std::vector<TrainingExample> returnVect;
+		std::deque<TrainingExample> returnVect;
 		std::ifstream exampleFile(fileName, std::ifstream::binary);
 
-		returnVect.reserve(MAX_EXAMPLE_SIZE);
 		for (int i = 0; i < MAX_EXAMPLE_SIZE; i++)
 		{
 			TrainingExample temp;
@@ -529,12 +550,12 @@ namespace GomokuUtils
 		return returnVect;
 	}
 
-	bool GetAllExampleSets_(std::vector<TrainingExample>& outputVector)
+	bool GetAllExampleSets_(std::deque<TrainingExample>& outputVector)
 	{
 		short i = 0;
 		std::string fileName = "valueDataset" + std::to_string(i) + ".bin";
 		std::ifstream exampleFile(fileName, std::ifstream::binary);
-		std::vector<std::future<std::vector<TrainingExample>>> pPromises;
+		std::vector<std::future<std::deque<TrainingExample>>> pPromises;
 		
 		while(exampleFile.good())
 		{
@@ -550,7 +571,7 @@ namespace GomokuUtils
 
 		for (int i = 0; i < pPromises.size(); i++)
 		{
-			std::vector<TrainingExample> subExampleSet = pPromises[i].get();
+			std::deque<TrainingExample> subExampleSet = pPromises[i].get();
 			outputVector.insert(outputVector.end(), subExampleSet.begin(), subExampleSet.end());
 		}
 

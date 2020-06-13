@@ -51,7 +51,7 @@ public:
 
 	void LoadModel(std::string const& modelPath);
 
-	void Train(std::vector<TrainingExample>& trainingExamples, double learningRate, unsigned int epoch = 10);
+	void Train(std::deque<TrainingExample>& trainingExamples, double learningRate, unsigned int epoch = 10);
 
 	double PredictValue(char* board, int size, int lastMoveIndex, bool bTurn);
 

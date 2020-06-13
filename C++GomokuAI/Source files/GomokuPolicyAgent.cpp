@@ -179,7 +179,7 @@ double GomokuPolicyAgent::PredictBoth(char* board, int size, int lastMoveIndex, 
 	return valueTensor[0].item<double>();
 }
 
-void GomokuPolicyAgent::Train(std::vector<TrainingExample>& trainingExamples, double learningRate, unsigned int epoch)
+void GomokuPolicyAgent::Train(std::deque<TrainingExample>& trainingExamples, double learningRate, unsigned int epoch)
 {
 	m_pNetworkGpu->train();
 	long long setSize = trainingExamples.size();
