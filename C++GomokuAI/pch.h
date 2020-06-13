@@ -24,6 +24,8 @@
 #include <iostream>
 #include <fstream>
 #include <exception>
+#include <unordered_map>
+#include <deque>
 
 #include <torch/torch.h>
 

@@ -178,6 +178,7 @@
     <ClInclude Include="Header files\FwdDecl.h" />
     <ClInclude Include="Header files\GomokuPolicyAgent.h" />
     <ClInclude Include="Header files\AgentPlayer.h" />
+    <ClInclude Include="Header files\HumanPlayer.h" />
     <ClInclude Include="Header files\IPlayer.h" />
     <ClInclude Include="Header files\MonteCarloNode.h" />
     <ClInclude Include="Header files\MonteCarloTreeSearch.h" />
@@ -199,6 +200,7 @@
     <ClCompile Include="Source files\BluPigPlayer.cpp" />
     <ClCompile Include="Source files\GomokuGame.cpp" />
     <ClCompile Include="Source files\GomokuPolicyAgent.cpp" />
+    <ClCompile Include="Source files\HumanPlayer.cpp" />
     <ClCompile Include="Source files\MonteCarloNode.cpp" />
     <ClCompile Include="Source files\MonteCarloTreeSearch.cpp" />
     <ClCompile Include="Source files\GomokuUtils.cpp" />

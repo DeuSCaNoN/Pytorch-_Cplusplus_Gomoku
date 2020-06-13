@@ -4,6 +4,7 @@
 #include "GomokuPolicyAgent.h"
 #include <BluPigPlayer.h>
 #include <AgentPlayer.h>
+#include <HumanPlayer.h>
 
 #include <api/renju_api.h>
 #include <ai/eval.h>
@@ -425,6 +426,8 @@ namespace GomokuUtils
 				else
 					move = cfg.pPlayer2->MakeMove(pGame, bTurn, exampleSet[exampleSize].pMoveEstimate);
 
+				cfg.pPlayer1->ClearTree();
+				cfg.pPlayer2->ClearTree();
 				exampleSet[exampleSize].boardValue = 0.0;
 
 				if (move < 0 || move > pGame->GetSideLength() * pGame->GetSideLength())
@@ -439,8 +442,6 @@ namespace GomokuUtils
 					int* const pLegalMoves = pGame->GetLegalMoves(size);
 					int randomMove = pLegalMoves[rand() % (size)];
 					pGame->PlayMove(randomMove);
-					cfg.pPlayer1->MoveMadeInGame(randomMove);
-					cfg.pPlayer2->MoveMadeInGame(randomMove);
 
 					exampleSet[exampleSize].lastMove = lastMove;
 					lastMove = randomMove;
@@ -448,8 +449,6 @@ namespace GomokuUtils
 				else
 				{
 					pGame->PlayMove(move);
-					cfg.pPlayer1->MoveMadeInGame(move);
-					cfg.pPlayer2->MoveMadeInGame(move);
 
 					exampleSet[exampleSize].lastMove = lastMove;
 					lastMove = move;

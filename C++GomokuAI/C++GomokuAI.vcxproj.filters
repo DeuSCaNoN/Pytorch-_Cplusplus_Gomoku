@@ -93,6 +93,9 @@
     <ClCompile Include="Source files\AgentPlayer.cpp">
       <Filter>Source Files\Players</Filter>
     </ClCompile>
+    <ClCompile Include="Source files\HumanPlayer.cpp">
+      <Filter>Source Files\Players</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h">
@@ -151,6 +154,9 @@
     </ClInclude>
     <ClInclude Include="Header files\FwdDecl.h">
       <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Header files\HumanPlayer.h">
+      <Filter>Header Files\Players</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>
