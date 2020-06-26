@@ -21,7 +21,10 @@ namespace Player
 
 	int AgentPlayer::MakeMove(std::shared_ptr<GomokuGame> pGame, bool bTurn, float* pMoveEstimates)
 	{
+//		auto start = std::chrono::steady_clock::now();
 		int move = m_pTreeSearch->GetMove(*pGame);
+//		auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start);
+//		std::cout << duration.count() << std::endl;
 
 		if (pMoveEstimates)
 		{

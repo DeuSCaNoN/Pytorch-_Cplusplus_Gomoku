@@ -22,7 +22,7 @@ struct TrainingRequest
 // Define a new Module.
 struct Net : torch::nn::Module
 {
-	Net(short resNetSize = 5);
+	Net(short resNetSize = 15);
 
 	torch::Tensor forwadPolicy(torch::Tensor x);
 
@@ -66,7 +66,9 @@ public:
 
 	torch::Tensor PredictMove(char* board, int size, int lastMoveIndex, bool bTurn);
 
-	void PredictBoth(char* board, int size, int lastMoveIndex, bool bTurn, pPredictCbFnPtr_t pFnCb);
+	double PredictBoth(char* board, int size, int lastMoveIndex, bool bTurn, torch::Tensor& policy);
+
+	void PredictBothAsync(char* board, int size, int lastMoveIndex, bool bTurn, pPredictCbFnPtr_t pFnCb);
 
 	std::string const& GetModelPath() const;
 private:

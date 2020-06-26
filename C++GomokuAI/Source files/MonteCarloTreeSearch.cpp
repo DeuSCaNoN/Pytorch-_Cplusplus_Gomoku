@@ -41,6 +41,9 @@ namespace MonteCarlo
 
 	void MonteCarloTreeSearch::Reset()
 	{
+		if (m_pRoot->GetChildrenCount() == 0)
+			return;
+
 		if (m_deleteThread.joinable())
 			m_deleteThread.join();
 
@@ -198,14 +201,14 @@ namespace MonteCarlo
 			valuePromise.set_value(value);
 		});
 
-		m_pAgent->PredictBoth(game.GetBoard(), m_gameSpace, game.GetLastMove(), game.GetPlayerTurn(), &fn);
+		m_pAgent->PredictBothAsync(game.GetBoard(), m_gameSpace, game.GetLastMove(), game.GetPlayerTurn(), &fn);
 		int size = 0;
 		int* pLegalMoves = game.GetLegalMoves(size);
 
 		torch::Tensor const& policy = policyFuture.get();
 		auto thread = std::thread(&MonteCarloNode::ExpandChildren, pNode, pLegalMoves, policy, size, game.GetCandidateMoves());
 		pNode->RecursiveUpdate(valueFuture.get());
-
+		
 		thread.join();
 	}
 

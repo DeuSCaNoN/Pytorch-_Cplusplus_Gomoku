@@ -7,7 +7,7 @@
 
 #define BATCH_SIZE 64U
 #define BATCH_VERBOSE_SIZE 3200 // BATCH_SIZE * 50
-#define CONV_2D_FILTER_SIZE 256
+#define CONV_2D_FILTER_SIZE 128
 #define BATCH_QUEUE_SIZE 32
 
 /*--------------------------------------------------------------*/
@@ -179,7 +179,20 @@ torch::Tensor GomokuPolicyAgent::PredictMove(char* board, int size, int lastMove
 	return std::move(policyTensor[0]);
 }
 
-void GomokuPolicyAgent::PredictBoth(char* board, int size, int lastMoveIndex, bool bTurn, pPredictCbFnPtr_t pFnCb)
+double GomokuPolicyAgent::PredictBoth(char* board, int size, int lastMoveIndex, bool bTurn, torch::Tensor& policy)
+{
+	torch::Tensor boardTensor = CreateTensorBoard_(board, size, lastMoveIndex, bTurn).reshape({ 1,4,BOARD_SIDE,BOARD_SIDE });
+	torch::Tensor valueTensor;
+	
+	m_pNetworkGpu->forwardBoth(boardTensor.to(torch::kCUDA),
+		policy,
+		valueTensor);
+
+	policy = policy[0].exp();
+	return valueTensor[0].item<double>();
+}
+
+void GomokuPolicyAgent::PredictBothAsync(char* board, int size, int lastMoveIndex, bool bTurn, pPredictCbFnPtr_t pFnCb)
 {
 	std::lock_guard<std::mutex>* pGuard;
 	while (true)
@@ -307,11 +320,12 @@ std::string const& GomokuPolicyAgent::GetModelPath() const
 
 void GomokuPolicyAgent::ProcessQueue_()
 {
+	std::this_thread::sleep_for(std::chrono::milliseconds(10));
 	while (!m_bShutdown)
 	{
 		if (m_requestEnd == 0)
 		{
-			std::this_thread::sleep_for(std::chrono::milliseconds(2));
+			std::this_thread::sleep_for(std::chrono::microseconds(10));
 			continue;
 		}
 		int queueSize;
@@ -420,7 +434,7 @@ float GomokuPolicyAgent::TrainGpuAsync_(
 
 //	std::cout << valueLoss << std::endl;
 
-	torch::Tensor lossTensor = (valueLoss + (policyLoss * 0.5)).mean();
+	torch::Tensor lossTensor = (valueLoss + policyLoss).mean();
 
 	lossTensor.backward();
 	optimizer.step();
