@@ -12,9 +12,9 @@ namespace GomokuUtils
 
 	void TeachFromValueSet(bool bGenerate = false);
 
-	void TrainSelfPlay(bool bLoop = true, short loopCount = 30);
+	void TrainSelfPlay(bool bLoop = true);
 
-	void TrainBluPig(bool bLoop = true, short loopCount = 30);
+	void TrainBluPig(bool bLoop = true);
 
 	void MixedTraining();
 

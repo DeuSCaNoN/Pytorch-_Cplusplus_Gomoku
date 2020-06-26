@@ -108,11 +108,9 @@ namespace GomokuUtils
 		}
 
 		float boardValue = maxboardValue / pGame->GetMovesPlayed();
-		float boardValueIncrease = (maxboardValue / abs(maxboardValue) - boardValue) / (exampleSize - 1);
 		for (TrainingExample& boardState : exampleSet)
 		{
 			boardState.boardValue = boardValue;
-			boardValue += boardValueIncrease;
 		}
 
 		pAgent->Train(exampleSet, 0.02, 3);
@@ -206,16 +204,14 @@ namespace GomokuUtils
 
 	/*------------------------------------------------------------------------------------------------*/
 
-	void TrainBluPig(bool bLoop, short loopCount)
+	void TrainBluPig(bool bLoop)
 	{
 		k_trainingLog.open(trainingFilename, std::ofstream::binary);
 		std::shared_ptr<GomokuPolicyAgent> pAgent = std::make_shared<GomokuPolicyAgent>();
 		auto pBluPigPlayer = std::make_shared<Player::BluPigPlayer>();
 		std::deque<TrainingExample> exampleSet;
-		auto pGame1 = std::make_shared<GomokuGame>(BOARD_SIDE, BOARD_WIN);
-		auto pGame2 = std::make_shared<GomokuGame>(BOARD_SIDE, BOARD_WIN);
 
-		unsigned int count = 1;
+		unsigned concurentThreadsSupported = std::thread::hardware_concurrency() / 2;
 		bool bRun = true;
 		std::thread signalThread([&]() {
 			if (bLoop)
@@ -225,69 +221,67 @@ namespace GomokuUtils
 				bRun = !bRun;
 			}
 		});
+		std::vector<int> startIndexVector({
+			80,81,82,83,84,
+			95,96,97,98,99,
+			110,111,113,114,
+			125,126,127,128,129,
+			140,141,142,143,144
+			});
+		std::random_shuffle(startIndexVector.begin(), startIndexVector.end());
+		int randomStartIndex = 0;
+
 		while (bRun)
 		{
-			pGame1->ResetBoard();
-			pGame2->ResetBoard();
-			std::future<std::deque<TrainingExample>> promise1;
-			std::future<std::deque<TrainingExample>> promise2;
-
-			auto pAgentPlayer = std::make_shared<Player::AgentPlayer>(pAgent, 1000);
-			PlayGeneratorCfg cfg({ 0, 1, false, false, true, true, pBluPigPlayer, pAgentPlayer, true, BOARD_LENGTH / 2 });
-
-			promise1 = std::async(&GenerateExamplesFromPlay_, cfg, pGame1);
-
-			auto pAgentPlayer2 = std::make_shared<Player::AgentPlayer>(pAgent, 1000);
-			PlayGeneratorCfg cfg2({ 0, 1, false, false, true, true, pAgentPlayer2, pBluPigPlayer, true, BOARD_LENGTH / 2 });
-
-			promise2 = std::async(&GenerateExamplesFromPlay_, cfg2, pGame2);
-
-			std::deque<TrainingExample> subExampleSet = promise1.get();
-			std::random_shuffle(subExampleSet.begin(), subExampleSet.end());
-			exampleSet.insert(exampleSet.end(), subExampleSet.begin(), subExampleSet.end());
-
-			subExampleSet = promise2.get();
-			std::random_shuffle(subExampleSet.begin(), subExampleSet.end());
-			exampleSet.insert(exampleSet.end(), subExampleSet.begin(), subExampleSet.end());
-
-			while (exampleSet.size() > 200)
+			exampleSet.clear();
+			std::vector<std::future<std::deque<TrainingExample>>> pPromises;
+			pPromises.reserve(concurentThreadsSupported);
+			for (unsigned short i = 0; i < concurentThreadsSupported / 2; i++)
 			{
-				exampleSet.pop_front();
+				auto pGame1 = std::make_shared<GomokuGame>(BOARD_SIDE, BOARD_WIN);
+				auto pGame2 = std::make_shared<GomokuGame>(BOARD_SIDE, BOARD_WIN);
+				pGame1->PlayMove(112);
+				pGame2->PlayMove(112);
+				pGame1->PlayMove(startIndexVector[(randomStartIndex + i) % startIndexVector.size()]);
+				pGame2->PlayMove(startIndexVector[(randomStartIndex + i) % startIndexVector.size()]);
+				
+				auto pAgentPlayer1 = std::make_shared<Player::AgentPlayer>(pAgent, 1000);
+				PlayGeneratorCfg cfg({ 0, 1, false, false, true, true, pBluPigPlayer, pAgentPlayer1, true, -1 });
+				pPromises.push_back(std::async(&GenerateExamplesFromPlay_, cfg, pGame1));
+
+				auto pAgentPlayer2 = std::make_shared<Player::AgentPlayer>(pAgent, 1000);
+				PlayGeneratorCfg cfg2({ 0, 1, false, false, true, true, pAgentPlayer2, pBluPigPlayer, true, -1 });
+				pPromises.push_back(std::async(&GenerateExamplesFromPlay_, cfg2, pGame2));
+			}
+
+			for (int i = 0; i < pPromises.size(); i++)
+			{
+				std::deque<TrainingExample> subExampleSet = pPromises[i].get();
+				exampleSet.insert(exampleSet.end(), subExampleSet.begin(), subExampleSet.end());
 			}
 
 			pAgent->Train(exampleSet, 0.02, 3);
-			pAgent->SaveModel();
-
-			if (count == loopCount)
-			{
-				std::ifstream src(pAgent->GetModelPath(), std::ios::binary);
-				std::ofstream dst("GomokuModel_Old.pt", std::ios::binary);
-
-				dst << src.rdbuf();
-				count = 1;
-
-				if (!bLoop)
-					break;
-
-				exampleSet.clear();
-			}
+			pAgent->SaveModel();			
 			
-			count++;
+			randomStartIndex = (randomStartIndex + (concurentThreadsSupported / 2)) % startIndexVector.size();
+		}
+
+		{
+			std::ifstream src(pAgent->GetModelPath(), std::ios::binary);
+			std::ofstream dst("GomokuModel_Old.pt", std::ios::binary);
+
+			dst << src.rdbuf();
 		}
 
 		signalThread.join();
 	}
 
-	void TrainSelfPlay(bool bLoop, short loopCount)
+	void TrainSelfPlay(bool bLoop)
 	{
 		std::shared_ptr<GomokuPolicyAgent> pAgent = std::make_shared<GomokuPolicyAgent>();
 		std::deque<TrainingExample> exampleSet;
 
-		//unsigned supportedGames = std::thread::hardware_concurrency() / 4;
-
-		auto pGame = std::make_shared<GomokuGame>(BOARD_SIDE, BOARD_WIN);
-		auto pAgentPlayer = std::make_shared<Player::AgentPlayer>(pAgent, 400);
-		unsigned int count = 1;
+		unsigned concurentThreadsSupported = std::thread::hardware_concurrency() / 2;
 
 		bool bRun = true;
 		std::thread signalThread([&]() {
@@ -298,36 +292,49 @@ namespace GomokuUtils
 				bRun = !bRun;
 			}
 		});
+
+		std::vector<int> startIndexVector({
+			80,81,82,83,84,
+			95,96,97,98,99,
+			110,111,113,114,
+			125,126,127,128,129,
+			140,141,142,143,144
+			});
+		std::random_shuffle(startIndexVector.begin(), startIndexVector.end());
+		int randomStartIndex = 0;
 		while (bRun)
 		{
-			pGame->ResetBoard();
-			pAgentPlayer->ClearTree();
-
-			PlayGeneratorCfg cfg({ 0, 1, false, false, true, true, pAgentPlayer, pAgentPlayer, true, BOARD_LENGTH / 2 });
-			std::deque<TrainingExample> subExampleSet = std::move(GenerateExamplesFromPlay_(cfg, pGame));
-			exampleSet.insert(exampleSet.end(), subExampleSet.begin(), subExampleSet.end());
-			std::random_shuffle(exampleSet.begin(), exampleSet.end());
-			while (exampleSet.size() > 200)
+			exampleSet.clear();
+			std::vector<std::future<std::deque<TrainingExample>>> pPromises;
+			pPromises.reserve(concurentThreadsSupported);
+			for (unsigned short i = 0; i < concurentThreadsSupported; i++)
 			{
-				exampleSet.pop_front();
+				auto pGame = std::make_shared<GomokuGame>(BOARD_SIDE, BOARD_WIN);
+				pGame->PlayMove(112);
+				pGame->PlayMove(startIndexVector[(randomStartIndex + i) % startIndexVector.size()]);
+				auto pAgentPlayer = std::make_shared<Player::AgentPlayer>(pAgent, 1000);
+				PlayGeneratorCfg cfg({ 0, 1, false, false, true, true, pAgentPlayer, pAgentPlayer, true, -1 });
+				pPromises.push_back(std::async(&GenerateExamplesFromPlay_, cfg, pGame));
+			}
+			
+			for (int i = 0; i < pPromises.size(); i++)
+			{
+				std::deque<TrainingExample> subExampleSet = pPromises[i].get();
+				exampleSet.insert(exampleSet.end(), subExampleSet.begin(), subExampleSet.end());
 			}
 
-			pAgent->Train(exampleSet, 0.2, 3);
+			pAgent->Train(exampleSet, 0.2, 15);
 			pAgent->SaveModel();
 			// pAgentPlayer->UpdateModel(pAgent->GetModelPath()); Don't need this yet
 
-			if (count == loopCount)
-			{
-				std::ifstream src(pAgent->GetModelPath(), std::ios::binary);
-				std::ofstream dst("GomokuModel_Old.pt", std::ios::binary);
+			randomStartIndex = (randomStartIndex + concurentThreadsSupported) % startIndexVector.size();
+		}
 
-				dst << src.rdbuf();
-				count = 1;
-				exampleSet.clear();
-				if (!bLoop)
-					break;
-			}
-			count++;
+		{
+			std::ifstream src(pAgent->GetModelPath(), std::ios::binary);
+			std::ofstream dst("GomokuModel_Old.pt", std::ios::binary);
+
+			dst << src.rdbuf();
 		}
 
 		signalThread.join();
@@ -415,7 +422,7 @@ namespace GomokuUtils
 			}
 			else
 			{
-				short initialMoves = cfg.bRandStart ? rand() % 10 + 1 : 0;
+				short initialMoves = cfg.bRandStart ? rand() % 5 + 1 : 0;
 				for (int j = 0; j < initialMoves; j++)
 				{
 					int size = 0;
