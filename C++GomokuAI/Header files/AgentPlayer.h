@@ -20,6 +20,8 @@ namespace Player
 
 		int MakeMove(std::shared_ptr<GomokuGame> pGame, bool bTurn, float* moveEstimates);
 
+		void MoveMadeInGame(int moveIndex);
+
 		void ClearTree();
 
 		std::string PrintWinningStatement();
@@ -27,5 +29,7 @@ namespace Player
 	private:
 		std::shared_ptr<GomokuPolicyAgent> m_pAgent;
 		std::shared_ptr<MonteCarlo::MonteCarloTreeSearch> m_pTreeSearch;
+
+		int m_lastMoveMade;
 	};
 }

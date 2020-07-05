@@ -88,33 +88,19 @@ namespace GomokuUtils
 			pPlayer1->ClearTree();
 			pPlayer2->ClearTree();
 		}
-
-		exampleSet.resize(exampleSize);
 		
-		float maxboardValue = 0.0f;
 		if (pGame->GetGameWinState() == WinnerState_enum::P1)
 		{
-			maxboardValue = 1.0 * 9;
 			std::cout << "P1 won" << std::endl;
 		}
 		else if (pGame->GetGameWinState() == WinnerState_enum::P2)
 		{
-			maxboardValue = -1.0 * 10;
 			std::cout << "P2 won" << std::endl;
 		}
 		else if (pGame->GetGameWinState() == WinnerState_enum::Draw)
 		{
 			std::cout << "DRAW" << std::endl;
 		}
-
-		float boardValue = maxboardValue / pGame->GetMovesPlayed();
-		for (TrainingExample& boardState : exampleSet)
-		{
-			boardState.boardValue = boardValue;
-		}
-
-		pAgent->Train(exampleSet, 0.02, 3);
-		pAgent->SaveModel();
 	}
 
 	void DrawMatrix(char* matrix, int sideLength)
@@ -323,7 +309,7 @@ namespace GomokuUtils
 				exampleSet.insert(exampleSet.end(), subExampleSet.begin(), subExampleSet.end());
 			}
 
-			pAgent->Train(exampleSet, 0.2, 15);
+			pAgent->Train(exampleSet, 0.2, 3);
 			pAgent->SaveModel();
 			// pAgentPlayer->UpdateModel(pAgent->GetModelPath()); Don't need this yet
 
@@ -340,28 +326,10 @@ namespace GomokuUtils
 		signalThread.join();
 	}
 
-	void MixedTraining()
-	{
-		bool bLoop = true;
-		std::thread signalThread([&]() {
-			std::string exit;
-			std::cin >> exit;
-			bLoop = !bLoop;
-		});
-		while (bLoop)
-		{
-			std::cout << "BluPig Train" << std::endl;
-			TrainBluPig(false, 7);
-			std::cout << "Self Train" << std::endl;
-			TrainSelfPlay(false, 20);
-		}
-	}
-
 	void Evaluate(std::shared_ptr<Player::IPlayer> pAgent1, std::shared_ptr<Player::IPlayer> pAgent2)
 	{
 		std::cout << "Evaluating" << std::endl;
 		k_trainingLog << "Evaluating" << std::endl;
-		std::future<std::deque<TrainingExample>> game1Promise;
 
 		auto pGame = std::make_shared<GomokuGame>(BOARD_SIDE, BOARD_WIN);
 		PlayGeneratorCfg cfg({ 0, 1, false, false, true, true, pAgent1, pAgent2, true, -1 });
@@ -371,9 +339,11 @@ namespace GomokuUtils
 		{
 		case WinnerState_enum::P1:
 			k_trainingLog << "Player 1 " + pAgent1->PrintWinningStatement() << std::endl;
+			std::cout << "Player 1 " + pAgent1->PrintWinningStatement() << std::endl;
 			break;
 		case WinnerState_enum::P2:
 			k_trainingLog << "Player 2 " + pAgent2->PrintWinningStatement() << std::endl;
+			std::cout << "Player 2 " + pAgent2->PrintWinningStatement() << std::endl;
 			break;
 		default:
 			break;
@@ -390,9 +360,11 @@ namespace GomokuUtils
 		{
 		case WinnerState_enum::P1:
 			k_trainingLog << "Player 1 " + pAgent2->PrintWinningStatement() << std::endl;
+			std::cout << "Player 1 " + pAgent2->PrintWinningStatement() << std::endl;
 			break;
 		case WinnerState_enum::P2:
 			k_trainingLog << "Player 2 " + pAgent1->PrintWinningStatement() << std::endl;
+			std::cout << "Player 2 " + pAgent1->PrintWinningStatement() << std::endl;
 			break;
 		default:
 			break;
@@ -454,8 +426,6 @@ namespace GomokuUtils
 				else
 					move = cfg.pPlayer2->MakeMove(pGame, bTurn, exampleSet[exampleSize].pMoveEstimate);
 
-				cfg.pPlayer1->ClearTree();
-				cfg.pPlayer2->ClearTree();
 				exampleSet[exampleSize].boardValue = 0.0;
 
 				if (move < 0 || move > pGame->GetSideLength() * pGame->GetSideLength())
@@ -470,6 +440,8 @@ namespace GomokuUtils
 					int* const pLegalMoves = pGame->GetLegalMoves(size);
 					int randomMove = pLegalMoves[rand() % (size)];
 					pGame->PlayMove(randomMove);
+					cfg.pPlayer1->MoveMadeInGame(randomMove);
+					cfg.pPlayer2->MoveMadeInGame(randomMove);
 
 					exampleSet[exampleSize].lastMove = lastMove;
 					lastMove = randomMove;
@@ -477,6 +449,8 @@ namespace GomokuUtils
 				else
 				{
 					pGame->PlayMove(move);
+					cfg.pPlayer1->MoveMadeInGame(move);
+					cfg.pPlayer2->MoveMadeInGame(move);
 
 					exampleSet[exampleSize].lastMove = lastMove;
 					lastMove = move;
@@ -488,22 +462,19 @@ namespace GomokuUtils
 				bFirst = false;
 			}
 
-			float maxboardValue = 0.0f;
+			float boardValue = 0.0f;
 			switch (pGame->GetGameWinState())
 			{
 			case WinnerState_enum::P1:
-				maxboardValue = 1.0 * 9;
 				k_trainingLog << "Player 1 " + cfg.pPlayer1->PrintWinningStatement() << std::endl;
 				break;
 			case WinnerState_enum::P2:
-				maxboardValue = -1.0 * 10;
 				k_trainingLog << "Player 2 " + cfg.pPlayer2->PrintWinningStatement() << std::endl;
 				break;
 			default:
 				break;
 			}
 
-			float boardValue = maxboardValue / pGame->GetMovesPlayed();
 			for (int j = currentGameStart; j < exampleSize; j++)
 			{
 				exampleSet[j].boardValue = boardValue;

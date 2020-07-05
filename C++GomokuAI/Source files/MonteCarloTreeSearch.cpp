@@ -87,8 +87,9 @@ namespace MonteCarlo
 		m_bEasyWinFound = false;
 
 		std::future<int> promise = std::async(&MonteCarloTreeSearch::SearchForEasyWin_, this, game);
+		int playouts = m_pRoot->GetVisits() > m_playouts ? m_playouts : (m_playouts - m_pRoot->GetVisits() + 1);
 
-		for (int i = 0; i < m_playouts; i++)
+		for (int i = 0; i < playouts; i++)
 		{
 			if (m_bEasyWinFound)
 				break;

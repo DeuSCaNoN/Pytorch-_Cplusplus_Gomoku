@@ -42,9 +42,8 @@ void StartGomokuTraining()
 		std::cout << "1: Self train" << std::endl
 			<< "2: Blupig train" << std::endl
 			<< "3: Human play" << std::endl
-			<< "4: Mixed Self blupig" << std::endl
-			<< "5: Evaluate against old agent" << std::endl
-			<< "6: Exit" << std::endl
+			<< "4: Evaluate against old agent" << std::endl
+			<< "5: Exit" << std::endl
 			<< "Enter number: ";
 		int input;
 		std::cin >> input;
@@ -71,9 +70,6 @@ void StartGomokuTraining()
 			HumanSelection();
 			break;
 		case 4:
-			GomokuUtils::MixedTraining();
-			break;
-		case 5:
 			Evaluate();
 			break;
 		default:

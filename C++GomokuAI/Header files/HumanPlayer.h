@@ -14,6 +14,8 @@ namespace Player
 
 		std::string PrintWinningStatement();
 
+		void MoveMadeInGame(int /*moveIndex*/) {}
+
 		void ClearTree() {}
 	};
 }

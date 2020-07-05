@@ -16,8 +16,6 @@ namespace GomokuUtils
 
 	void TrainBluPig(bool bLoop = true);
 
-	void MixedTraining();
-
 	void Evaluate(std::shared_ptr<Player::IPlayer> pAgent1, std::shared_ptr<Player::IPlayer> pAgent2);
 
 	void DrawMatrix(char* matrix, int sideLength);
